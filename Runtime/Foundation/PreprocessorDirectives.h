@@ -1,104 +1,66 @@
 #pragma once
 
-#if defined(_MSC_VER)
-    #define NOINLINE              __declspec(noinline)
-    #define INLINE                inline
-    #define FORCEINLINE           __forceinline
-    #define EMPTYINLINE           __forceinline
+
+#ifdef __IOS__
+	//todo ::
+#elif __ANDROID__
+	//android define
+	#define inline_0 __attribute__((unused, noinline))
+	#define inline_1 __attribute__((unused)) inline
+	#define inline_2 __attribute__((unused, always_inline)) inline
+	#define inline_3
+	#define DLL_Export __attribute ((visibility("default")))
+	#define	DLL_Import 
+	#define AlignPrefix(length)
+	#define AlignSuffix(length) __attribute__((aligned(length)))
+	#define stdcall
+#elif __GNUC__
+	#define MIN_GCC_VERSION 40100
+	#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+	#define inline_0 __attribute__((unused, noinline))
+	#define inline_1 __attribute__((unused)) inline
+	#if defined(__clang__) || defined(__APPLE_CC__) || defined(__APPLE_CPP__)
+	    #define inline_2 __attribute__((unused, always_inline, nodebug)) inline
+	#else
+	    #define inline_2 __attribute__((unused, always_inline)) inline
+	#endif
+	#define inline_3
+	#define DLL_Export __attribute ((visibility("default")))
+	#define	DLL_Import 
+	#define AlignPrefix(length)
+	#define AlignSuffix(length) __attribute__((aligned(length)))
+	#define stdcall
+
 #else
-    #define NOINLINE              __attribute__((unused, noinline)) // unused is needed to avoid warning when a function is not used
-    #define INLINE                __attribute__((unused)) inline
+	//windows define
+	#define inline_0 __declspec(noinline)
+	#define inline_1 inline
+	#define inline_2 __forceinline
+	#define inline_3
+	#define DLL_Export __declspec(dllexport)
+	#define	DLL_Import __declspec(dllimport)
+	#define stdcall _stdcall
 
-    #if defined(__clang__) || defined(__APPLE_CC__) || defined(__APPLE_CPP__)
-    #define FORCEINLINE           __attribute__((unused, always_inline, nodebug)) inline
-    #else
-    #define FORCEINLINE           __attribute__((unused, always_inline)) inline
-    #endif
-
-    #if defined(__clang__) || defined(__APPLE_CC__) || defined(__APPLE_CPP__)
-    #define EMPTYINLINE       __attribute__((const, always_inline, nodebug)) inline
-    #else
-    #define EMPTYINLINE       __attribute__((const, always_inline)) inline
-    #endif
-#endif // defined(_MSC_VER)
-
-#if PLATFORM_WIN
-//#pragma warning(disable:6255) // _alloca
-//#pragma warning(disable:6211) // leaking due to exception
-#define INPUT_NOTNULL   _In_
-#define INPUT_OPTIONAL  _In_opt_
-#define OUTPUT_NOTNULL  _Out_
-#define OUTPUT_OPTIONAL _Out_opt_
-#define INOUT_NOTNULL   _Inout_
-#define INOUT_OPTIONAL  _Inout_opt_
-#define RETVAL_NOTNULL _Ret_
-#define RETVAL_OPTIONAL _Ret_opt_
-#define DOES_NOT_RETURN __declspec(noreturn)
-#define ANALYSIS_ASSUME(x) { __analysis_assume(x); }
-#define TAKES_PRINTF_ARGS(n, m)
-#define UNUSED_SYMBOL
-
-#elif defined(__GNUC__) || defined(__clang__)
-
-#define INPUT_NOTNULL
-#define INPUT_OPTIONAL
-#define OUTPUT_NOTNULL
-#define OUTPUT_OPTIONAL
-#define INOUT_NOTNULL
-#define INOUT_OPTIONAL
-#define RETVAL_NOTNULL
-#define RETVAL_OPTIONAL
-#define DOES_NOT_RETURN __attribute__((noreturn))
-#define ANALYSIS_ASSUME(x)
-#define TAKES_PRINTF_ARGS(m, n) __attribute__((format(printf,m,n)))
-#define UNUSED_SYMBOL __attribute__((unused))
-#else
-
-#define INPUT_NOTNULL
-#define INPUT_OPTIONAL
-#define OUTPUT_NOTNULL
-#define OUTPUT_OPTIONAL
-#define INOUT_NOTNULL
-#define INOUT_OPTIONAL
-#define RETVAL_NOTNULL
-#define RETVAL_OPTIONAL
-#define DOES_NOT_RETURN
-#define ANALYSIS_ASSUME(x)
-#define TAKES_PRINTF_ARGS(n, m)
-#define UNUSED_SYMBOL
 
 #endif
 
-// Macros for marking things deprecated. Examples:
-//
-// Deprecating a function or variable:
-//      DEPRECATED("use the string variant instead") void DoStringyThing(core::string str);
-//
-// It's only needed on the declaration in the header, and it goes BEFORE the declaration.
-//
-// Deprecating a class or struct:
-//      struct DEPRECATED("use math::float3 instead") Vector3f
-//      {
-//          float x, y, z;
-//      };
-//
-// Again, it's only needed on the declaration, but it goes AFTER the 'class' or 'struct' keyword.
-// (Otherwise the compiler confuses it with deprecating a variable).
-//
-// Deprecating an enum value:
-//      enum Platforms
-//      {
-//          Windows,
-//          WebPlayer DEPRECATED_ENUM_VALUE("no longer supported"),
-//          Metro DEPRECATED_ENUM_VALUE("use WindowsStore instead") = 4,
-//          WindowsStore = 4
-//      }
-//
-// It is a different macro name, and it goes AFTER the enum member, but BEFORE any assigned value for that member.
-//
-// There is no non-message version of these things, by design - always write something that explains
-// what to use instead, if applicable.
-//
+// msvc compiler define
+#if defined(_MSC_VER)
+
+// clang compiler define
+#else 
+#define HAS_CLANG_FEATURE(x) (__has_feature(x))
+#endif
+
+#define C_API_HEADER extern "C" 
+#define dll_export C_API_HEADER DLL_Export
+#define ExportModule
+
+#define Inline(i) inline_##i
+
+
+#pragma region DEPRECATED
+
 #if defined(_MSC_VER)
     #define DEPRECATED(msg) __declspec(deprecated(msg))
     #define DEPRECATED_ENUM_VALUE(msg) /* no equivalent for this in MSVC */
@@ -135,3 +97,67 @@
 // TODO
     #define DEPRECATED(msg)
 #endif
+
+#pragma endregion
+
+
+#pragma region ENUM_FLAGS
+// Adds ability to use bit logic operators with enum type T.
+// Enum must have appropriate values (e.g. kEnumValue1 = 1 << 1, kEnumValue2 = 1 << 2)!
+#define ENUM_FLAGS(T) DETAIL__ENUM_FLAGS(T, )
+#define ENUM_FLAGS_AS_MEMBER(T) DETAIL__ENUM_FLAGS(T, friend)
+
+#define DETAIL__ENUM_FLAGS(T, PREFIX_) \
+    PREFIX_ inline T operator |(const T left, const T right) { \
+        return static_cast<T>(static_cast<unsigned>(left) | static_cast<unsigned>(right)); \
+    } \
+    PREFIX_ inline T operator &(const T left, const T right) { \
+        return static_cast<T>(static_cast<unsigned>(left) & static_cast<unsigned>(right)); \
+    } \
+    PREFIX_ inline T operator ^(const T left, const T right) { \
+        return static_cast<T>(static_cast<unsigned>(left) ^ static_cast<unsigned>(right)); \
+    } \
+    PREFIX_ inline T operator ~(const T flags) { \
+        return static_cast<T>(~static_cast<unsigned>(flags)); \
+    } \
+    PREFIX_ inline T& operator |=(T& left, const T right) { \
+        return left = left | right; \
+    } \
+    PREFIX_ inline T& operator &=(T& left, const T right) { \
+        return left = left & right; \
+    } \
+    PREFIX_ inline T& operator ^=(T& left, const T right) { \
+        return left = left ^ right; \
+    } \
+    PREFIX_ inline bool HasFlag(const T flags, const T flagToTest) { \
+        assert((static_cast<unsigned>(flagToTest) & (static_cast<unsigned>(flagToTest)-1)) == 0 && \
+            "More than one flag specified in HasFlag()"                                            \
+        ); \
+        return (static_cast<unsigned>(flags) & static_cast<unsigned>(flagToTest)) != 0; \
+    } \
+    PREFIX_ inline bool HasAnyFlags(const T flags, const T flagsToTest) { \
+        return (static_cast<unsigned>(flags) & static_cast<unsigned>(flagsToTest)) != 0; \
+    } \
+    PREFIX_ inline bool HasAllFlags(const T flags, const T flagsToTest) { \
+        return (static_cast<unsigned>(flags) & static_cast<unsigned>(flagsToTest)) == static_cast<unsigned>(flagsToTest); \
+    } \
+    PREFIX_ inline T SetFlags(const T flags, const T flagsToSet) { \
+        return (flags | flagsToSet); \
+    } \
+    PREFIX_ inline T ClearFlags(const T flags, const T flagsToClear) { \
+        return (flags & ~flagsToClear); \
+    } \
+    PREFIX_ inline T SetOrClearFlags(const T flags, const T flagsToSetOrClear, bool value) { \
+        return value ? SetFlags(flags, flagsToSetOrClear) : ClearFlags(flags, flagsToSetOrClear); \
+    }
+
+// Adds ability to use increment operators with enum type T.
+// Enum must have consecutive values!
+#define ENUM_INCREMENT(T) \
+    inline T& operator++(T& flags) { \
+        flags = static_cast<T>(static_cast<int>(flags) + 1); return flags; \
+    } \
+    inline T operator++(T& flags, int) { \
+        T result = flags; ++flags; return result; \
+    }
+#pragma endregion
