@@ -14,6 +14,9 @@ set_arch("x64")
 -- requires packages
 add_requires("fmt")
 add_requires("spdlog")
+add_requires("imgui")
+add_requires("glfw")
+add_requires("vulkan-hpp")
 
 target("VulkanApp")
     set_languages("c++latest")
@@ -29,4 +32,7 @@ target("VulkanApp")
     -- dependent packages
     add_packages("fmt")
     add_packages("spdlog")
+    add_packages("imgui")
+    add_packages("glfw")
+    add_packages("vulkan-hpp")
 target_end()

@@ -1,4 +1,5 @@
 #include "Exception.h"
+#include "DebugBreak.h"
 
 #pragma region Exception
 
@@ -33,6 +34,7 @@ const std::string &Exception::GetMessage() const noexcept {
 }
 
 void Exception::ThrowException(const Exception &exception) noexcept(false) {
+	DEBUG_BREAK;
 	throw exception;
 }
 

@@ -6,6 +6,11 @@
 template<typename T>
 class RuntimeStatic : NonCopyable {
 public:
+	RuntimeStatic() {
+	    static_assert(requires{ std::declval<T>().Initialize(); std::declval<T>().Destroy(); }, 
+			"This Type not member func 'Initialize' or 'Destroy'"
+		);
+	}
 	void Initialize() {
 		assert(_pObject == nullptr);
 		_pObject = new T;
