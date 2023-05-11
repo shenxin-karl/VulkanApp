@@ -17,6 +17,7 @@ add_requires("spdlog v1.9.2")
 add_requires("imgui docking")      
 add_requires("glfw 3.3.8")               
 add_requires("vulkan-hpp v1.3.250", {verify = false})        
+add_requires("vulkansdk")
 
 target("VulkanApp")
     set_languages("c++latest")
@@ -29,10 +30,12 @@ target("VulkanApp")
     add_includedirs(RUNTIME_DIR)
     add_defines("PLATFORM_WIN")
 
+
     -- dependent packages
     add_packages("fmt")
     add_packages("spdlog")
     add_packages("imgui")
     add_packages("glfw")
     add_packages("vulkan-hpp")
+    add_packages("vulkansdk")
 target_end()

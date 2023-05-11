@@ -18,7 +18,15 @@ public:
 	static void GlfwErrorCallback(int error, const char *description);
     static bool IsExtensionAvailable(const ImVector<VkExtensionProperties> & properties, const char * str);
 private:
-	bool			_isDone = false;
-	GLFWwindow *	_pWindow = nullptr;
-	vk::Instance	_instance;
+	bool						_isDone = false;
+	GLFWwindow *				_pWindow = nullptr;
+	vk::Instance				_vkInstance;
+	vk::PhysicalDevice			_vkPhysicalDevice;
+	vk::Device					_vkDevice;
+	vk::DebugUtilsMessengerEXT	_vkDebugUtilsMessenger;
+	uint32_t					_graphicsQueueFamilyIndex = -1;
+	uint32_t					_presentQueueFamilyIndex  = -1;
+	vk::Queue					_graphicsQueue;
+	vk::Queue					_presentQueue;
+	vk::CommandPool				_graphicsPool;
 };
