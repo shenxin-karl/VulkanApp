@@ -29,7 +29,7 @@ target("VulkanApp")
     add_files("**.cpp")
     add_includedirs(RUNTIME_DIR)
     add_defines("PLATFORM_WIN")
-
+    add_defines("VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1")
 
     -- dependent packages
     add_packages("fmt")
