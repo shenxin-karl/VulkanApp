@@ -42,12 +42,12 @@ public:
 		ThrowException(Exception(std::move(message), fmtAndLocation.location));
 	}
 	template<typename ...Args>
-	static void Throw(bool cond, const FormatAndLocation &fmtAndLocation, Args&&...args) {
+	static void CondThrow(bool cond, const FormatAndLocation &fmtAndLocation, Args&&...args) {
 		if (!cond) {
 			Exception::Throw(fmtAndLocation, std::forward<Args>(args)...);
 		}
 	}
-private:
+protected:
 	static void ThrowException(const Exception &exception) noexcept(false);
 protected:
 	int				_line;

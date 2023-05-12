@@ -13,17 +13,20 @@ public:
 	void RenderScene() override;
 	~Application() override;
 public:
+    void SetupGlfw();
+	void DestroyGlfw();
 	void SetupVulkan();
     void DestroyVulkan();
 	static void GlfwErrorCallback(int error, const char *description);
-    static bool IsExtensionAvailable(const ImVector<VkExtensionProperties> & properties, const char * str);
 private:
 	bool						_isDone = false;
 	GLFWwindow *				_pWindow = nullptr;
 	vk::Instance				_vkInstance;
 	vk::PhysicalDevice			_vkPhysicalDevice;
 	vk::Device					_vkDevice;
+#if !defined(NDEBUG)
 	vk::DebugUtilsMessengerEXT	_vkDebugUtilsMessenger;
+#endif
 	uint32_t					_graphicsQueueFamilyIndex = -1;
 	uint32_t					_presentQueueFamilyIndex  = -1;
 	vk::Queue					_graphicsQueue;

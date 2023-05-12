@@ -9,14 +9,14 @@ bool ThreadGuard::IsMainThread() {
 
 void ThreadGuard::EnsureMainThread(std::string_view message, std::source_location sl) {
 	if (message.empty()) {
-	    Exception::Throw(IsMainThread(), 
+	    Exception::CondThrow(IsMainThread(), 
 			"{}({},{}) EnsureMainThread failed!", 
 			sl.file_name(), 
 			sl.line(), 
 			sl.column()
 		);
 	} else {
-	    Exception::Throw(IsMainThread(), message);
+	    Exception::CondThrow(IsMainThread(), message);
 	}
 }
 

@@ -161,3 +161,6 @@
         T result = flags; ++flags; return result; \
     }
 #pragma endregion
+
+
+#define UNUSED_VAR(x) ((void)x)

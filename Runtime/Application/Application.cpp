@@ -1,12 +1,14 @@
 #include "Application.h"
 #include "Foundation/Logger.h"
+#include "VulkanUtils/utils.h"
 #include <imgui.h>
-#include <VKUtils/utils.hpp>
+
 
 void Application::Startup() {
 	gLogger.Initialize();
 	gLogger->StartLogging();
 
+	SetupGlfw();
 	SetupVulkan();
 }
 
@@ -14,6 +16,7 @@ void Application::Cleanup() {
 	gLogger.Destroy();
 
 	DestroyVulkan();
+	DestroyGlfw();
 }
 
 bool Application::IsDone() const {
@@ -29,7 +32,7 @@ void Application::RenderScene() {
 Application::~Application() {
 }
 
-void Application::SetupVulkan() {
+void Application::SetupGlfw() {
 	glfwSetErrorCallback(GlfwErrorCallback);
 	if (!glfwInit()) {
 	    Exception::Throw("glfwInit error");
@@ -39,60 +42,90 @@ void Application::SetupVulkan() {
 	int height = 720;
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	_pWindow = glfwCreateWindow(width, height, "Vulkan App", nullptr, nullptr);
+}
+
+void Application::DestroyGlfw() {
+	glfwDestroyWindow(_pWindow);
+	_pWindow = nullptr;
+	glfwTerminate();
+}
+
+void Application::SetupVulkan() {
+
 	if (!glfwVulkanSupported()) {
 	    Exception::Throw("GLFW Vulkan Not Supported");
 	}
 
-	std::vector<std::string> extensions;
-	uint32_t extensionCount = 0;
-	const char **pGlfwExtensions = glfwGetRequiredInstanceExtensions(&extensionCount);
-	for (int i = 0; i < extensionCount; ++i) {
-	    extensions.push_back(pGlfwExtensions[i]);
-	}
-
+	vkutils::InitDynamicLoader();
 
 	// create vulkan instance
 	{
 		const char *pAppName = "VulkanApp";
 		const char *pEngineName = "Vulkan";
 
-		_vkInstance = vk::su::createInstance(
+		vk::ApplicationInfo applicationInfo {
 			pAppName, 
+			1, 
 			pEngineName, 
-			{}, 
-			extensions, 
+			1, 
 			VK_VERSION_1_1
-		);
+		};
 
-#if !defined(NDEBUG)
-        _vkDebugUtilsMessenger = _vkInstance.createDebugUtilsMessengerEXT(vk::su::makeDebugUtilsMessengerCreateInfoEXT());
+        std::vector<vk::ExtensionProperties> properties = vk::enumerateInstanceExtensionProperties();
+		auto compare = [](vk::ExtensionProperties const & ep) {
+			return strcmp(ep.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0;
+		};
+		if (std::ranges::find_if(properties, compare) == properties.end()) {
+			Exception::Throw(
+				"Something went very wrong, cannot find {} {}", 
+				VK_EXT_DEBUG_UTILS_EXTENSION_NAME, 
+				"extension"
+			);
+		}
+
+		std::vector<vk::LayerProperties> layersProperties = vk::enumerateInstanceLayerProperties();
+
+		vk::InstanceCreateFlags flags = {};
+		std::vector<const char *> layers;
+		auto extensions = vkutils::GetRequiredInstanceExtensions();
+#ifndef NODEBUG
+        layers.push_back("VK_LAYER_KHRONOS_validation");
+        extensions.push_back("VK_EXT_debug_report");
+		flags |= vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
 #endif
-		_vkPhysicalDevice = _vkInstance.enumeratePhysicalDevices().front();
-		vk::su::SurfaceData surfaceData(_vkInstance, pAppName, vk::Extent2D(width, height));
 
-        std::pair<uint32_t, uint32_t> findRes = vk::su::findGraphicsAndPresentQueueFamilyIndex(
-            _vkPhysicalDevice, 
-			surfaceData.surface
-		);
+		vk::InstanceCreateInfo createInfo = {
+		    flags,
+		    &applicationInfo,
+			static_cast<uint32_t>(layers.size()),
+			layers.data(),
+			static_cast<uint32_t>(extensions.size()),
+			extensions.data(),
+		};
+		_vkInstance = createInstance(createInfo);
+		vkutils::InitInstanceExtFunc(_vkInstance);
 
-		_graphicsQueueFamilyIndex = findRes.first;
-		_presentQueueFamilyIndex = findRes.second;
-
-		_vkDevice = vk::su::createDevice(
-			_vkPhysicalDevice, 
-			_graphicsQueueFamilyIndex, 
-			vk::su::getDeviceExtensions()
-		);
-
-		_graphicsQueue = _vkDevice.getQueue(_graphicsQueueFamilyIndex, 0);
-		_presentQueue = _vkDevice.getQueue(_presentQueueFamilyIndex, 0);
-		_graphicsPool = vk::su::createCommandPool(_vkDevice, _graphicsQueueFamilyIndex);
+#ifndef NODEBUG
+	{
+        vkutils::LoadDebugUtilsMessengerFunc(_vkInstance);
+        vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+                                                         vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+        vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | 
+			                                               vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+                                                           vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+	    vk::DebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfo(
+		    {}, 
+		    severityFlags, 
+		    messageTypeFlags, 
+		    &vkutils::DebugMessageFunc 
+	    );
+		_vkDebugUtilsMessenger =  _vkInstance.createDebugUtilsMessengerEXT(debugUtilsMessengerCreateInfo);
+	}
+#endif
 	}
 }
 
 void Application::DestroyVulkan() {
-	_vkDevice.destroyCommandPool(_graphicsPool);
-	_vkDevice.destroy();
 #if !defined(NDEBUG)
     _vkInstance.destroyDebugUtilsMessengerEXT(_vkDebugUtilsMessenger);
 #endif
@@ -101,13 +134,4 @@ void Application::DestroyVulkan() {
 
 void Application::GlfwErrorCallback(int error, const char *description) {
 	gLogger->Error("GLFW Error {}: {}", error, description);
-}
-
-bool Application::IsExtensionAvailable(const ImVector<VkExtensionProperties> &properties, const char *extension) {
-    for (const VkExtensionProperties& p : properties) {
-        if (strcmp(p.extensionName, extension) == 0) {
-            return true;
-        }
-    }
-    return false;
 }
