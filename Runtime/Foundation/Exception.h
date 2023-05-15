@@ -57,6 +57,12 @@ protected:
 	std::string		_whatBuffer;
 };
 
+#define ExceptionAssert(cond)					\
+do {											\
+    bool _bValueFlag = (cond);					\
+    ::Exception::CondThrow(_bValueFlag, #cond);	\
+} while (false)
+
 class NotImplementedException : public std::exception {
 public:
 	explicit NotImplementedException(const char *func);
