@@ -11,11 +11,11 @@ public:
     Device();
     ~Device();
     void OnCreate(const char *pAppName, 
-                  const char *pEngineName, 
-                  bool cpuValidationLayerEnabled, 
-                  bool gpuValidationLayerEnabled,
-                  vk::SurfaceKHR surface
-        );
+        const char *pEngineName, 
+        bool cpuValidationLayerEnabled, 
+        bool gpuValidationLayerEnabled,
+        vk::SurfaceKHR surface
+    );
     void OnDestroy();
     auto GetDevice() const -> vk::Device;
     auto GetPresentQueue() const -> vk::Queue;
