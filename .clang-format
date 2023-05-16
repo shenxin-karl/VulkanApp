@@ -3,12 +3,10 @@ Language: Cpp
 BasedOnStyle: LLVM
 # 访问说明符(public、private等)的偏移
 AccessModifierOffset: -4
-# 左括号(左圆括号、左尖括号、左方括号)后的对齐: Align, DontAlign, AlwaysBreak(总是在左括号后换行)
-AlignAfterOpenBracket: Align
+
+
 # 允许构造函数的初始化参数放在下一行
 AllowAllConstructorInitializersOnNextLine: true
-# 允许函数声明的所有参数在放在下一行
-AllowAllParametersOfDeclarationOnNextLine: true
 # 允许短的块放在同一行(Always 总是将短块合并成一行，Empty 只合并空块)
 AllowShortBlocksOnASingleLine: Empty
 # 允许短的case标签放在同一行
@@ -17,17 +15,20 @@ AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
 # 允许短的if语句保持在同一行
 AllowShortIfStatementsOnASingleLine: false
+
 # 允许短的循环保持在同一行
 AllowShortLoopsOnASingleLine: false
+
 # 总是在定义返回类型后换行(deprecated)
 AlwaysBreakAfterDefinitionReturnType: None
+
 # 函数声明返回类型后是否换行(None 自动，All全部，TopLevel...)
 AlwaysBreakAfterReturnType: None
+
+
 # false表示所有形参要么都在同一行，要么都各自一行
 BinPackParameters: true
 
-# false表示函数实参要么都在同一行，要么都各自一行
-BinPackArguments: true
 
 # 大括号换行，只有当 BreakBeforeBraces 设置为Custom时才有效
 BreakBeforeBraces: Custom
@@ -61,7 +62,7 @@ BraceWrapping:
   # 缩进大括号(整个大括号框起来的部分都缩进)
   IndentBraces: false
   # 空函数的大括号是否可以在一行
-  SplitEmptyFunction: false
+  SplitEmptyFunction: true
   # 空记录体(struct/class/union)的大括号是否可以在一行
   SplitEmptyRecord: false
   # 空名字空间的大括号是否可以在一行
@@ -71,7 +72,7 @@ BraceWrapping:
 BreakConstructorInitializersBeforeComma: false
 
 # 每行字符的限制，0表示没有限制
-ColumnLimit: 130
+ColumnLimit: 100
 # 如果为true，则连续的名称空间声明将在同一行上。如果为false，则在新行上声明每个名称空间。
 CompactNamespaces: true
 
@@ -88,7 +89,7 @@ ContinuationIndentWidth: 4
 IndentWidth: 4
 
 # 缩进case标签
-IndentCaseLabels: true
+IndentCaseLabels: false
 
 # 指针和引用的对齐: Left, Right, Middle
 PointerAlignment: Right
@@ -170,7 +171,7 @@ MaxEmptyLinesToKeep: 1
 NamespaceIndentation: None
 
 # 允许重新排版注释
-ReflowComments: true
+ReflowComments: false
 
 # 允许排序 using 声明
 SortUsingDeclarations: false
@@ -178,3 +179,14 @@ SortUsingDeclarations: false
 # 在C风格类型转换后添加空格
 SpaceAfterCStyleCast: false
 
+
+AlignAfterOpenBracket: Align
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+# false表示函数实参要么都在同一行，要么都各自一行
+BinPackArguments: false
+BinPackParameters: false
+
+EmptyLineAfterAccessModifier: Never
+EmptyLineBeforeAccessModifier: Never

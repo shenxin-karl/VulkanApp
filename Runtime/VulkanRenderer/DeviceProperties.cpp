@@ -1,5 +1,5 @@
 // AMD Cauldron code
-// 
+//
 // Copyright(c) 2018 Advanced Micro Devices, Inc.All rights reserved.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
@@ -22,34 +22,33 @@
 namespace vkgfx {
 
 bool DeviceProperties::IsExtensionPresent(const char *pExtName) {
-	return std::find_if(
-		_deviceExtensionProperties.begin(),
-		_deviceExtensionProperties.end(),
-		[pExtName](const VkExtensionProperties &extensionProps) -> bool {
-			return strcmp(extensionProps.extensionName, pExtName) == 0;
-		}
-	) != _deviceExtensionProperties.end();
+    return std::find_if(_deviceExtensionProperties.begin(),
+                        _deviceExtensionProperties.end(),
+                        [pExtName](const VkExtensionProperties &extensionProps) -> bool {
+                            return strcmp(extensionProps.extensionName, pExtName) == 0;
+                        }) != _deviceExtensionProperties.end();
 }
 
 bool DeviceProperties::Init(vk::PhysicalDevice physicalDevice) {
-	_physicalDevice = physicalDevice;
-	_deviceExtensionProperties = _physicalDevice.enumerateDeviceExtensionProperties();
-	return _deviceExtensionProperties.size();
+    _physicalDevice = physicalDevice;
+    _deviceExtensionProperties = _physicalDevice.enumerateDeviceExtensionProperties();
+    return _deviceExtensionProperties.size();
 }
 
 bool DeviceProperties::AddDeviceExtensionName(const char *deviceExtensionName) {
-	if (IsExtensionPresent(deviceExtensionName)) {
-		_deviceExtensionNames.push_back(deviceExtensionName);
-		return true;
-	}
-	Exception::Throw("The device extension '{}' has not been found", deviceExtensionName);
-	return false;
+    if (IsExtensionPresent(deviceExtensionName)) {
+        _deviceExtensionNames.push_back(deviceExtensionName);
+        return true;
+    }
+    Exception::Throw("The device extension '{}' has not been found", deviceExtensionName);
+    return false;
 }
 
-void DeviceProperties::GetExtensionNamesAndConfigs(std::vector<const char*> &deviceExtensionNames) const {
-	for (auto &name : _deviceExtensionNames) {
-		deviceExtensionNames.push_back(name);
-	}
+void DeviceProperties::GetExtensionNamesAndConfigs(
+    std::vector<const char *> &deviceExtensionNames) const {
+    for (auto &name : _deviceExtensionNames) {
+        deviceExtensionNames.push_back(name);
+    }
 }
 
-}
+}    // namespace vkgfx

@@ -24,28 +24,27 @@ namespace vkgfx {
 
 class DeviceProperties {
 public:
-	bool Init(vk::PhysicalDevice physicalDevice);
-	bool IsExtensionPresent(const char *pExtName);
-	bool AddDeviceExtensionName(const char *deviceExtensionName);
-	void GetExtensionNamesAndConfigs(std::vector<const char*> &deviceExtensionNames) const;
+    bool Init(vk::PhysicalDevice physicalDevice);
+    bool IsExtensionPresent(const char *pExtName);
+    bool AddDeviceExtensionName(const char *deviceExtensionName);
+    void GetExtensionNamesAndConfigs(std::vector<const char *> &deviceExtensionNames) const;
 
-	auto GetNext() const -> void* {
-		return _pNext;
-	}
+    auto GetNext() const -> void * {
+        return _pNext;
+    }
 
-	void SetNewNext(void *pNext) {
-		_pNext = pNext;
-	}
+    void SetNewNext(void *pNext) {
+        _pNext = pNext;
+    }
 
-	vk::PhysicalDevice GetPhysicalDevice() const {
-		return _physicalDevice;
-	}
-
+    vk::PhysicalDevice GetPhysicalDevice() const {
+        return _physicalDevice;
+    }
 private:
-	vk::PhysicalDevice _physicalDevice;
-	std::vector<const char*> _deviceExtensionNames;
-	std::vector<vk::ExtensionProperties> _deviceExtensionProperties;
-	void *_pNext = nullptr;
+    vk::PhysicalDevice _physicalDevice;
+    std::vector<const char *> _deviceExtensionNames;
+    std::vector<vk::ExtensionProperties> _deviceExtensionProperties;
+    void *_pNext = nullptr;
 };
 
-} // namespace vkgfx
+}    // namespace vkgfx

@@ -1,5 +1,5 @@
 // AMD Cauldron code
-// 
+//
 // Copyright(c) 2018 Advanced Micro Devices, Inc.All rights reserved.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
@@ -28,25 +28,24 @@ public:
     bool Init();
     bool AddInstanceLayerName(const char *instanceLayerName);
     bool AddInstanceExtensionName(const char *instanceExtensionName);
-    auto GetNext() const -> void* {
+    auto GetNext() const -> void * {
         return _pNext;
     }
     void SetNewNext(void *pNext) {
         _pNext = pNext;
     }
     void GetExtensionNamesAndConfigs(std::vector<const char *> &pInstance_layer_names,
-        std::vector<const char *> &pInstance_extension_names
-    ) const;
+                                     std::vector<const char *> &pInstance_extension_names) const;
 private:
     bool IsLayerPresent(const char *pExtName);
     bool IsExtensionPresent(const char *pExtName);
 private:
     friend class Device;
-    std::vector<vk::LayerProperties>     _instanceLayerProperties;
+    std::vector<vk::LayerProperties> _instanceLayerProperties;
     std::vector<vk::ExtensionProperties> _instanceExtensionProperties;
-    std::vector<const char *>            _instanceLayerNames;
-    std::vector<const char *>            _instanceExtensionNames;
-    void *                               _pNext = nullptr;
+    std::vector<const char *> _instanceLayerNames;
+    std::vector<const char *> _instanceExtensionNames;
+    void *_pNext = nullptr;
 };
 
-}
+}    // namespace vkgfx
