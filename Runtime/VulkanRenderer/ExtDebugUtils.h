@@ -17,32 +17,23 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 #pragma once
-#include <vector>
-#include <vulkan/vulkan.hpp>
+
+#include "vulkan/vulkan.h"
+#include "InstanceProperties.h"
+#include "Foundation/PreprocessorDirectives.h"
 
 namespace vkgfx {
 
-class DeviceProperties {
-public:
-    bool Init(vk::PhysicalDevice physicalDevice);
-    bool IsExtensionPresent(const char *pExtName);
-    bool AddDeviceExtensionName(const char *deviceExtensionName);
-    void GetExtensionNamesAndConfigs(std::vector<const char *> &deviceExtensionNames) const;
-    auto GetNext() const -> void * {
-        return _pNext;
-    }
-    void SetNewNext(void *pNext) {
-        _pNext = pNext;
-    }
-    vk::PhysicalDevice GetPhysicalDevice() const {
-        return _physicalDevice;
-    }
-private:
-    friend class Device;
-    vk::PhysicalDevice _physicalDevice;
-    std::vector<const char *> _deviceExtensionNames;
-    std::vector<vk::ExtensionProperties> _deviceExtensionProperties;
-    void *_pNext = nullptr;
-};
+inline bool s_bCanUseDebugUtils = false;
+inline std::mutex s_mutex = {};
+
+Inline(2) bool ExtDebugUtilsCheckInstanceExtensions(InstanceProperties &deviceProperties) {
+    s_bCanUseDebugUtils = deviceProperties.AddInstanceExtensionName("VK_EXT_debug_utils");
+	return s_bCanUseDebugUtils;	
+}
+
+void SetResourceName(vk::Device device, vk::ObjectType objectType, uint64_t handle, const char *name);
+void SetPerfMarkerBegin(vk::CommandBuffer cmd, const char *name);
+void SetPerfMarkerEnd(vk::CommandBuffer cmd);
 
 }    // namespace vkgfx

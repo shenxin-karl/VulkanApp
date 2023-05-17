@@ -16,33 +16,38 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-#pragma once
-#include <vector>
-#include <vulkan/vulkan.hpp>
+
+#include "ExtDebugUtils.h"
 
 namespace vkgfx {
 
-class DeviceProperties {
-public:
-    bool Init(vk::PhysicalDevice physicalDevice);
-    bool IsExtensionPresent(const char *pExtName);
-    bool AddDeviceExtensionName(const char *deviceExtensionName);
-    void GetExtensionNamesAndConfigs(std::vector<const char *> &deviceExtensionNames) const;
-    auto GetNext() const -> void * {
-        return _pNext;
+void SetResourceName(vk::Device device, vk::ObjectType objectType, uint64_t handle, const char *name) {
+    if (VULKAN_HPP_DEFAULT_DISPATCHER.vkSetDebugUtilsObjectNameEXT && handle && name) {
+        std::unique_lock<std::mutex> lock(s_mutex);
+        vk::DebugUtilsObjectNameInfoEXT nameInfo = {};
+        nameInfo.sType = vk::StructureType::eDebugUtilsObjectNameInfoEXT;
+        nameInfo.objectType = objectType;
+        nameInfo.objectHandle = handle;
+        nameInfo.pObjectName = name;
+        device.setDebugUtilsObjectNameEXT(nameInfo);
     }
-    void SetNewNext(void *pNext) {
-        _pNext = pNext;
+}
+
+void SetPerfMarkerBegin(vk::CommandBuffer cmd, const char *name) {
+    if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBeginDebugUtilsLabelEXT && name) {
+        std::array<float, 4> color = {1.0f, 0.0f, 0.0f, 1.0f};
+	    vk::DebugUtilsLabelEXT label = {
+            name,
+            color,
+	    };
+        cmd.beginDebugUtilsLabelEXT(label);
     }
-    vk::PhysicalDevice GetPhysicalDevice() const {
-        return _physicalDevice;
+}
+
+void SetPerfMarkerEnd(vk::CommandBuffer cmd) {
+    if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdEndDebugUtilsLabelEXT) {
+	    cmd.endDebugUtilsLabelEXT();
     }
-private:
-    friend class Device;
-    vk::PhysicalDevice _physicalDevice;
-    std::vector<const char *> _deviceExtensionNames;
-    std::vector<vk::ExtensionProperties> _deviceExtensionProperties;
-    void *_pNext = nullptr;
-};
+}
 
 }    // namespace vkgfx

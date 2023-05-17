@@ -41,7 +41,8 @@ private:
                     const char *pEngineName,
                     bool cpuValidationLayerEnabled,
                     bool gpuValidationLayerEnabled,
-                    const InstanceProperties &instanceProperties);
+                    InstanceProperties &instanceProperties,
+                    const DeviceProperties &deviceProperties);
     void CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip);
 private:
     vk::Instance _instance;

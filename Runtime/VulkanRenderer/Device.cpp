@@ -1,12 +1,12 @@
 #include "Device.h"
-
-#include <map>
-
 #include "DeviceProperties.h"
 #include "InstanceProperties.h"
-#include <vulkan/vulkan_win32.h>
+#include "ExtDebugUtils.h"
 #include "ExtValidation.h"
 #include "Foundation/Exception.h"
+
+#include <map>
+#include <vulkan/vulkan_win32.h>
 
 namespace vkgfx {
 
@@ -34,10 +34,30 @@ void Device::OnCreate(const char *pAppName,
 
     deviceProperties.AddDeviceExtensionName(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     deviceProperties.AddDeviceExtensionName(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
-    OnCreateEx(pAppName, pEngineName, cpuValidationLayerEnabled, gpuValidationLayerEnabled, instanceProperties);
+    OnCreateEx(pAppName,
+               pEngineName,
+               cpuValidationLayerEnabled,
+               gpuValidationLayerEnabled,
+               instanceProperties,
+               deviceProperties);
 }
 
 void Device::OnDestroy() {
+    if (_surfaceKHR) {
+        _instance.destroySurfaceKHR(_surfaceKHR);
+        _surfaceKHR = nullptr;
+    }
+    vmaDestroyAllocator(_hAllocator);
+    _hAllocator = nullptr;
+
+    if (_device) {
+        _device.destroy();
+        _device = nullptr;
+    }
+
+    ExtDebugReportOnDestroy(_instance);
+    _instance.destroy();
+    _instance = nullptr;
 }
 
 auto Device::GetDevice() const -> vk::Device {
@@ -93,22 +113,29 @@ auto Device::GetPhysicalDeviceSubgroupProperties() const -> vk::PhysicalDeviceSu
 }
 
 void Device::CreatePipelineCache() {
+    vk::PipelineCacheCreateInfo pipelineCacheInfo = {};
+    _pipelineCache = _device.createPipelineCache(pipelineCacheInfo);
 }
 
 void Device::DestroyPipelineCache() {
+    _device.destroyPipelineCache(_pipelineCache);
+    _pipelineCache = nullptr;
 }
 
 auto Device::GetPipelineCache() const -> vk::PipelineCache {
+    return _pipelineCache;
 }
 
 void Device::GPUFlush() {
+    _device.waitIdle();
 }
 
 void Device::OnCreateEx(const char *pAppName,
                         const char *pEngineName,
                         bool cpuValidationLayerEnabled,
                         bool gpuValidationLayerEnabled,
-                        const InstanceProperties &instanceProperties) {
+                        InstanceProperties &instanceProperties,
+                        const DeviceProperties &deviceProperties) {
 
     std::vector<vk::QueueFamilyProperties> queueProps = _physicalDevice.getQueueFamilyProperties();
     ExceptionAssert(queueProps.size() > 1);
@@ -153,6 +180,80 @@ void Device::OnCreateEx(const char *pAppName,
             }
         }
     }
+
+    float queuePriorities[1] = {0.f};
+    vk::DeviceQueueCreateInfo queueCreateInfos[2];
+    queueCreateInfos[0].sType = vk::StructureType::eDeviceQueueCreateInfo;
+    queueCreateInfos[0].pNext = nullptr;
+    queueCreateInfos[0].queueCount = 1;
+    queueCreateInfos[0].pQueuePriorities = queuePriorities;
+    queueCreateInfos[0].queueFamilyIndex = _graphicsQueueFamilyIndex;
+
+    queueCreateInfos[1].sType = vk::StructureType::eDeviceQueueCreateInfo;
+    queueCreateInfos[1].pNext = nullptr;
+    queueCreateInfos[1].queueCount = 1;
+    queueCreateInfos[1].pQueuePriorities = queuePriorities;
+    queueCreateInfos[1].queueFamilyIndex = _computeQueueFamilyIndex;
+
+    vk::PhysicalDeviceFeatures physicalDeviceFeatures = {
+        .fillModeNonSolid = true,
+        .pipelineStatisticsQuery = true,
+        .fragmentStoresAndAtomics = true,
+        .vertexPipelineStoresAndAtomics = true,
+        .shaderImageGatherExtended = true,
+        .wideLines = true,
+        .independentBlend = true,
+    };
+
+    // enable feature to support fp16 with subgroup operations
+    vk::PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR shaderSubgroupExtendedType = {
+        .sType = vk::StructureType::ePhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR,
+        .pNext = deviceProperties.GetNext(),
+        .shaderSubgroupExtendedTypes = VK_TRUE,
+    };
+
+    // 描述纹理和buffer越界行为
+    vk::PhysicalDeviceRobustness2FeaturesEXT robustness2 = {
+        .sType = vk::StructureType::ePhysicalDeviceRobustness2FeaturesEXT,
+        .pNext = &shaderSubgroupExtendedType,
+        .nullDescriptor = VK_TRUE,
+    };
+
+    // 能够绑定 null 视图
+    vk::PhysicalDeviceFeatures2 physicalDeviceFeatures2 = {};
+    physicalDeviceFeatures2.sType = vk::StructureType::ePhysicalDeviceFeatures2;
+    physicalDeviceFeatures2.features = physicalDeviceFeatures;
+    physicalDeviceFeatures2.pNext = &robustness2;
+
+    vk::DeviceCreateInfo deviceCreateInfo = {
+        {},
+        2,
+        queueCreateInfos,
+        deviceProperties._deviceExtensionNames.size(),
+        deviceProperties._deviceExtensionProperties.data(),
+    };
+
+    _device = _physicalDevice.createDevice(deviceCreateInfo);
+
+    // 初始化 VMA 分配器
+    VmaAllocatorCreateInfo allocatorInfo = {};
+    allocatorInfo.physicalDevice = GetPhysicalDevice();
+    allocatorInfo.device = GetDevice();
+    allocatorInfo.instance = _instance;
+    vmaCreateAllocator(&allocatorInfo, &_hAllocator);
+
+    _graphicsQueue = _device.getQueue(_graphicsQueueFamilyIndex, 0);
+    if (_presentQueueFamilyIndex == _graphicsQueueFamilyIndex) {
+        _presentQueue = _graphicsQueue;
+    } else {
+        _presentQueue = _device.getQueue(_presentQueueFamilyIndex, 0);
+    }
+
+    if (_computeQueueFamilyIndex != -1) {
+        _computeQueue = _device.getQueue(_computeQueueFamilyIndex, 0);
+    }
+
+    ExtDebugUtilsCheckInstanceExtensions(instanceProperties);
 }
 
 static uint32_t GetScore(vk::PhysicalDevice physicalDevice) {
