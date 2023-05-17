@@ -41,7 +41,6 @@ private:
                     const char *pEngineName,
                     bool cpuValidationLayerEnabled,
                     bool gpuValidationLayerEnabled,
-                    vk::SurfaceKHR surface,
                     const InstanceProperties &instanceProperties);
     void CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip);
 private:
@@ -56,9 +55,9 @@ private:
     vk::Queue _presentQueue;
     vk::Queue _graphicsQueue;
     vk::Queue _computeQueue;
-    size_t _presentQueueFamilyIndex = 0;
-    size_t _graphicsQueueFamilyIndex = 0;
-    size_t _computeQueueFamilyIndex = 0;
+    size_t _presentQueueFamilyIndex = -1;
+    size_t _graphicsQueueFamilyIndex = -1;
+    size_t _computeQueueFamilyIndex = -1;
     bool _usingValidationLayer = false;
     bool _usingFp16 = false;
     VmaAllocator _hAllocator = nullptr;

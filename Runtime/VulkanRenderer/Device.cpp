@@ -23,6 +23,8 @@ void Device::OnCreate(const char *pAppName,
                       InstanceProperties &instanceProperties,
                       DeviceProperties &deviceProperties,
                       vk::SurfaceKHR surface) {
+
+    _surfaceKHR = surface;
     instanceProperties.AddInstanceExtensionName(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
     instanceProperties.AddInstanceExtensionName(VK_KHR_SURFACE_EXTENSION_NAME);
     if (cpuValidationLayerEnabled) {
@@ -32,12 +34,7 @@ void Device::OnCreate(const char *pAppName,
 
     deviceProperties.AddDeviceExtensionName(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     deviceProperties.AddDeviceExtensionName(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
-    OnCreateEx(pAppName,
-               pEngineName,
-               cpuValidationLayerEnabled,
-               gpuValidationLayerEnabled,
-               surface,
-               instanceProperties);
+    OnCreateEx(pAppName, pEngineName, cpuValidationLayerEnabled, gpuValidationLayerEnabled, instanceProperties);
 }
 
 void Device::OnDestroy() {
@@ -111,14 +108,51 @@ void Device::OnCreateEx(const char *pAppName,
                         const char *pEngineName,
                         bool cpuValidationLayerEnabled,
                         bool gpuValidationLayerEnabled,
-                        vk::SurfaceKHR surface,
                         const InstanceProperties &instanceProperties) {
+
     std::vector<vk::QueueFamilyProperties> queueProps = _physicalDevice.getQueueFamilyProperties();
     ExceptionAssert(queueProps.size() > 1);
 
     _physicalDeviceMemoryProperties = _physicalDevice.getMemoryProperties();
     _physicalDeviceProperties = _physicalDevice.getProperties();
     _physicalDeviceProperties2 = _physicalDevice.getProperties2();
+
+    for (size_t i = 0; i < queueProps.size(); ++i) {
+        const vk::QueueFamilyProperties &prop = queueProps[i];
+        if (prop.queueFlags & vk::QueueFlagBits::eGraphics) {
+            if (_graphicsQueueFamilyIndex != -1) {
+                _graphicsQueueFamilyIndex = i;
+            }
+            if (_physicalDevice.getSurfaceSupportKHR(i, _surfaceKHR)) {
+                _graphicsQueueFamilyIndex = i;
+                _presentQueueFamilyIndex = i;
+                break;
+            }
+        }
+    }
+
+    if (_presentQueueFamilyIndex == -1) {
+        for (size_t i = 0; i < queueProps.size(); ++i) {
+            const vk::QueueFamilyProperties &prop = queueProps[i];
+            if (_physicalDevice.getSurfaceSupportKHR(i, _surfaceKHR)) {
+                _presentQueueFamilyIndex = i;
+                break;
+            }
+        }
+    }
+
+    for (size_t i = 0; i < queueProps.size(); ++i) {
+        const vk::QueueFamilyProperties &prop = queueProps[i];
+        if (prop.queueFlags & vk::QueueFlagBits::eCompute) {
+            if (_computeQueueFamilyIndex != -1) {
+                _graphicsQueueFamilyIndex = i;
+            }
+            if (i != _graphicsQueueFamilyIndex) {
+                _computeQueueFamilyIndex = i;
+                break;
+            }
+        }
+    }
 }
 
 static uint32_t GetScore(vk::PhysicalDevice physicalDevice) {
@@ -143,8 +177,7 @@ static uint32_t GetScore(vk::PhysicalDevice physicalDevice) {
     return score;
 }
 
-static vk::PhysicalDevice
-SelectPhysicalDevice(const std::vector<vk::PhysicalDevice> &physicalDevices) {
+static vk::PhysicalDevice SelectPhysicalDevice(const std::vector<vk::PhysicalDevice> &physicalDevices) {
     ExceptionAssert(physicalDevices.size() > 0 && "No GPU found");
     std::multimap<uint32_t, vk::PhysicalDevice> ratings;
     for (auto it = physicalDevices.begin(); it != physicalDevices.end(); ++it) {
@@ -153,9 +186,7 @@ SelectPhysicalDevice(const std::vector<vk::PhysicalDevice> &physicalDevices) {
     return ratings.rbegin()->second;
 }
 
-void Device::CreateInstance(const char *pAppName,
-                            const char *pEngineName,
-                            const InstanceProperties &ip) {
+void Device::CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip) {
     vk::ApplicationInfo applicationInfo = {pAppName, 1, pEngineName, 1, VK_VERSION_1_1};
 
     vk::InstanceCreateInfo instanceCreateInfo = {
