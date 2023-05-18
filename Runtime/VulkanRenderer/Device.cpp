@@ -6,6 +6,7 @@
 #include "Foundation/Exception.h"
 
 #include <map>
+#include <Windows.h>
 #include <vulkan/vulkan_win32.h>
 
 namespace vkgfx {
@@ -160,7 +161,6 @@ void Device::OnCreateEx(const char *pAppName,
 
     if (_presentQueueFamilyIndex == -1) {
         for (size_t i = 0; i < queueProps.size(); ++i) {
-            const vk::QueueFamilyProperties &prop = queueProps[i];
             if (_physicalDevice.getSurfaceSupportKHR(i, _surfaceKHR)) {
                 _presentQueueFamilyIndex = i;
                 break;
@@ -195,15 +195,14 @@ void Device::OnCreateEx(const char *pAppName,
     queueCreateInfos[1].pQueuePriorities = queuePriorities;
     queueCreateInfos[1].queueFamilyIndex = _computeQueueFamilyIndex;
 
-    vk::PhysicalDeviceFeatures physicalDeviceFeatures = {
-        .fillModeNonSolid = true,
-        .pipelineStatisticsQuery = true,
-        .fragmentStoresAndAtomics = true,
-        .vertexPipelineStoresAndAtomics = true,
-        .shaderImageGatherExtended = true,
-        .wideLines = true,
-        .independentBlend = true,
-    };
+    vk::PhysicalDeviceFeatures physicalDeviceFeatures = {};
+    physicalDeviceFeatures.fillModeNonSolid = true;
+    physicalDeviceFeatures.pipelineStatisticsQuery = true;
+    physicalDeviceFeatures.fragmentStoresAndAtomics = true;
+    physicalDeviceFeatures.shaderImageGatherExtended = true;
+    physicalDeviceFeatures.vertexPipelineStoresAndAtomics = true;
+    physicalDeviceFeatures.wideLines = true;
+    physicalDeviceFeatures.independentBlend = true;
 
     // enable feature to support fp16 with subgroup operations
     vk::PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR shaderSubgroupExtendedType = {
@@ -226,11 +225,12 @@ void Device::OnCreateEx(const char *pAppName,
     physicalDeviceFeatures2.pNext = &robustness2;
 
     vk::DeviceCreateInfo deviceCreateInfo = {
-        {},
-        2,
-        queueCreateInfos,
-        deviceProperties._deviceExtensionNames.size(),
-        deviceProperties._deviceExtensionProperties.data(),
+    	.sType = vk::StructureType::eDeviceCreateInfo,
+        .pNext = nullptr,
+        .queueCreateInfoCount = 2,
+    	.pQueueCreateInfos = queueCreateInfos,
+        .enabledLayerCount = static_cast<uint32_t>(deviceProperties._deviceExtensionNames.size()),
+        .ppEnabledLayerNames = deviceProperties._deviceExtensionNames.data(),
     };
 
     _device = _physicalDevice.createDevice(deviceCreateInfo);
@@ -260,16 +260,16 @@ static uint32_t GetScore(vk::PhysicalDevice physicalDevice) {
     uint32_t score = 0;
     vk::PhysicalDeviceProperties deviceProperties = physicalDevice.getProperties();
     switch (deviceProperties.deviceType) {
-    case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+    case vk::PhysicalDeviceType::eIntegratedGpu:
         score += 1000;
         break;
-    case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+    case vk::PhysicalDeviceType::eDiscreteGpu:
         score += 10000;
         break;
-    case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+    case vk::PhysicalDeviceType::eVirtualGpu:
         score += 100;
         break;
-    case VK_PHYSICAL_DEVICE_TYPE_CPU:
+    case vk::PhysicalDeviceType::eCpu:
         score += 10;
         break;
     default:
@@ -288,14 +288,21 @@ static vk::PhysicalDevice SelectPhysicalDevice(const std::vector<vk::PhysicalDev
 }
 
 void Device::CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip) {
-    vk::ApplicationInfo applicationInfo = {pAppName, 1, pEngineName, 1, VK_VERSION_1_1};
+    vk::ApplicationInfo applicationInfo = {
+    	.pApplicationName = pAppName,
+    	.applicationVersion = 1,
+    	.pEngineName = pEngineName,
+    	.engineVersion = 1,
+    	.apiVersion = VK_VERSION_1_1,
+    };
 
     vk::InstanceCreateInfo instanceCreateInfo = {
-        {},
-        &applicationInfo,
-        ip._instanceLayerNames,
-        ip._instanceExtensionNames,
-        ip._pNext,
+        .pNext = ip._pNext,
+        .pApplicationInfo = &applicationInfo,
+        .enabledLayerCount = static_cast<uint32_t>(ip._instanceLayerNames.size()),
+        .ppEnabledLayerNames = ip._instanceLayerNames.data(),
+        .enabledExtensionCount = static_cast<uint32_t>(ip._instanceExtensionNames.size()),
+        .ppEnabledExtensionNames = ip._instanceExtensionNames.data(),
     };
     _instance = vk::createInstance(instanceCreateInfo);
     ExtDebugReportGetProcAddresses(_instance);
