@@ -1,8 +1,13 @@
 #include "Application.h"
 #include "Foundation/Logger.h"
 #include "VulkanUtils/utils.h"
+#include "VulkanRenderer/Device.h"
+
 #include <imgui.h>
 
+Application::Application() {
+
+}
 
 void Application::Startup() {
 	gLogger.Initialize();
@@ -51,85 +56,18 @@ void Application::DestroyGlfw() {
 }
 
 void Application::SetupVulkan() {
-
 	if (!glfwVulkanSupported()) {
 	    Exception::Throw("GLFW Vulkan Not Supported");
 	}
 
 	vkutils::InitDynamicLoader();
-
-	// create vulkan instance
-	{
-		const char *pAppName = "VulkanApp";
-		const char *pEngineName = "Vulkan";
-
-		vk::ApplicationInfo applicationInfo {
-			pAppName, 
-			1, 
-			pEngineName, 
-			1, 
-			VK_VERSION_1_1
-		};
-
-        std::vector<vk::ExtensionProperties> properties = vk::enumerateInstanceExtensionProperties();
-		auto compare = [](vk::ExtensionProperties const & ep) {
-			return strcmp(ep.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0;
-		};
-		if (std::ranges::find_if(properties, compare) == properties.end()) {
-			Exception::Throw(
-				"Something went very wrong, cannot find {} {}", 
-				VK_EXT_DEBUG_UTILS_EXTENSION_NAME, 
-				"extension"
-			);
-		}
-
-		std::vector<vk::LayerProperties> layersProperties = vk::enumerateInstanceLayerProperties();
-
-		vk::InstanceCreateFlags flags = {};
-		std::vector<const char *> layers;
-		auto extensions = vkutils::GetRequiredInstanceExtensions();
-#ifndef NODEBUG
-        layers.push_back("VK_LAYER_KHRONOS_validation");
-        extensions.push_back("VK_EXT_debug_report");
-		flags |= vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
-#endif
-
-		vk::InstanceCreateInfo createInfo = {
-		    flags,
-		    &applicationInfo,
-			static_cast<uint32_t>(layers.size()),
-			layers.data(),
-			static_cast<uint32_t>(extensions.size()),
-			extensions.data(),
-		};
-		_vkInstance = createInstance(createInfo);
-		vkutils::InitInstanceExtFunc(_vkInstance);
-
-#ifndef NODEBUG
-	{
-        vkutils::LoadDebugUtilsMessengerFunc(_vkInstance);
-        vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-                                                         vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
-        vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | 
-			                                               vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-                                                           vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
-	    vk::DebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfo(
-		    {}, 
-		    severityFlags, 
-		    messageTypeFlags, 
-		    &vkutils::DebugMessageFunc 
-	    );
-		_vkDebugUtilsMessenger =  _vkInstance.createDebugUtilsMessengerEXT(debugUtilsMessengerCreateInfo);
-	}
-#endif
-	}
+	_pDevice = std::make_unique<vkgfx::Device>();
+	_pDevice->OnCreate("VulkanAPP", "Vulkan", true, true, _pWindow);
 }
 
 void Application::DestroyVulkan() {
-#if !defined(NDEBUG)
-    _vkInstance.destroyDebugUtilsMessengerEXT(_vkDebugUtilsMessenger);
-#endif
-	_vkInstance.destroy();
+	_pDevice->OnDestroy();
+	_pDevice = nullptr;
 }
 
 void Application::GlfwErrorCallback(int error, const char *description) {

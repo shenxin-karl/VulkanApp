@@ -27,8 +27,8 @@ namespace vkgfx {
 inline bool s_bCanUseDebugUtils = false;
 inline std::mutex s_mutex = {};
 
-Inline(2) bool ExtDebugUtilsCheckInstanceExtensions(InstanceProperties &deviceProperties) {
-    s_bCanUseDebugUtils = deviceProperties.AddInstanceExtensionName("VK_EXT_debug_utils");
+Inline(2) bool ExtDebugUtilsCheckInstanceExtensions(InstanceProperties &instanceProperties) {
+    s_bCanUseDebugUtils = instanceProperties.AddInstanceExtensionName("VK_EXT_debug_utils");
 	return s_bCanUseDebugUtils;	
 }
 

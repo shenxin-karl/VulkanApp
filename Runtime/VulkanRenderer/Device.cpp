@@ -9,6 +9,11 @@
 #include <Windows.h>
 #include <vulkan/vulkan_win32.h>
 
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
+
+#include "VulkanUtils/utils.h"
+
 namespace vkgfx {
 
 Device::Device() {
@@ -21,18 +26,27 @@ void Device::OnCreate(const char *pAppName,
                       const char *pEngineName,
                       bool cpuValidationLayerEnabled,
                       bool gpuValidationLayerEnabled,
-                      InstanceProperties &instanceProperties,
-                      DeviceProperties &deviceProperties,
-                      vk::SurfaceKHR surface) {
+                      GLFWwindow *pWindow) {
 
-    _surfaceKHR = surface;
+    InstanceProperties instanceProperties;
+    instanceProperties.Init();
+
     instanceProperties.AddInstanceExtensionName(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
     instanceProperties.AddInstanceExtensionName(VK_KHR_SURFACE_EXTENSION_NAME);
+    ExtDebugUtilsCheckInstanceExtensions(instanceProperties);
+
     if (cpuValidationLayerEnabled) {
         ExtDebugReportCheckInstanceExtensions(&instanceProperties, gpuValidationLayerEnabled);
     }
     CreateInstance(pAppName, pEngineName, instanceProperties);
 
+
+    VkSurfaceKHR vkSurface;
+    glfwCreateWindowSurface(_instance, pWindow, nullptr, &vkSurface);
+    _surfaceKHR = vk::SurfaceKHR(vkSurface);
+
+	DeviceProperties deviceProperties;
+    deviceProperties.Init(_physicalDevice);
     deviceProperties.AddDeviceExtensionName(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     deviceProperties.AddDeviceExtensionName(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
     OnCreateEx(pAppName,
@@ -234,6 +248,7 @@ void Device::OnCreateEx(const char *pAppName,
     };
 
     _device = _physicalDevice.createDevice(deviceCreateInfo);
+    vkutils::InitDeviceExtFunc(_device);
 
     // ≥ı ºªØ VMA ∑÷≈‰∆˜
     VmaAllocatorCreateInfo allocatorInfo = {};
@@ -305,6 +320,8 @@ void Device::CreateInstance(const char *pAppName, const char *pEngineName, const
         .ppEnabledExtensionNames = ip._instanceExtensionNames.data(),
     };
     _instance = vk::createInstance(instanceCreateInfo);
+    vkutils::InitInstanceExtFunc(_instance);
+
     ExtDebugReportGetProcAddresses(_instance);
     ExtDebugReportOnCreate(_instance);
 

@@ -37,8 +37,8 @@ void SetPerfMarkerBegin(vk::CommandBuffer cmd, const char *name) {
     if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBeginDebugUtilsLabelEXT && name) {
         std::array<float, 4> color = {1.0f, 0.0f, 0.0f, 1.0f};
 	    vk::DebugUtilsLabelEXT label = {
-            name,
-            color,
+            .pLabelName = name,
+            .color = color,
 	    };
         cmd.beginDebugUtilsLabelEXT(label);
     }

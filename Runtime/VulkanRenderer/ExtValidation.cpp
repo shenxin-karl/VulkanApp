@@ -17,6 +17,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 #include <vulkan/vulkan.h>
+#include <Windows.h>
 #include <vulkan/vulkan_win32.h>
 #include "InstanceProperties.h"
 #include "ExtValidation.h"

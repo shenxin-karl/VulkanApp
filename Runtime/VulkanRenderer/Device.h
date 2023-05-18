@@ -1,11 +1,14 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include <vma/vk_mem_alloc.h>
+#include <GLFW/glfw3.h>
 
 namespace vkgfx {
 
 class InstanceProperties;
 class DeviceProperties;
+
+
 
 class Device {
 public:
@@ -15,9 +18,7 @@ public:
                   const char *pEngineName,
                   bool cpuValidationLayerEnabled,
                   bool gpuValidationLayerEnabled,
-                  InstanceProperties &instanceProperties,
-                  DeviceProperties &deviceProperties,
-                  vk::SurfaceKHR surface);
+                  GLFWwindow *pWindow);
     void OnDestroy();
     auto GetDevice() const -> vk::Device;
     auto GetPresentQueue() const -> vk::Queue;

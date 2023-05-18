@@ -47,7 +47,7 @@ bool InstanceProperties::Init() {
 
 bool InstanceProperties::AddInstanceLayerName(const char *instanceLayerName) {
     if (IsLayerPresent(instanceLayerName)) {
-        _instanceExtensionNames.push_back(instanceLayerName);
+        _instanceLayerNames.push_back(instanceLayerName);
         return true;
     }
     Exception::Throw("The instance layer '{}' has not been found", instanceLayerName);
