@@ -12,7 +12,7 @@
 #define VMA_IMPLEMENTATION
 #include <vma/vk_mem_alloc.h>
 
-#include "VulkanUtils/utils.h"
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace vkgfx {
 
@@ -23,10 +23,12 @@ Device::~Device() {
 }
 
 void Device::OnCreate(const char *pAppName,
-                      const char *pEngineName,
-                      bool cpuValidationLayerEnabled,
-                      bool gpuValidationLayerEnabled,
-                      GLFWwindow *pWindow) {
+    const char *pEngineName,
+    bool cpuValidationLayerEnabled,
+    bool gpuValidationLayerEnabled,
+    GLFWwindow *pWindow) {
+
+    InitDynamicLoader();
 
     InstanceProperties instanceProperties;
     instanceProperties.Init();
@@ -40,21 +42,20 @@ void Device::OnCreate(const char *pAppName,
     }
     CreateInstance(pAppName, pEngineName, instanceProperties);
 
-
     VkSurfaceKHR vkSurface;
     glfwCreateWindowSurface(_instance, pWindow, nullptr, &vkSurface);
     _surfaceKHR = vk::SurfaceKHR(vkSurface);
 
-	DeviceProperties deviceProperties;
+    DeviceProperties deviceProperties;
     deviceProperties.Init(_physicalDevice);
     deviceProperties.AddDeviceExtensionName(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     deviceProperties.AddDeviceExtensionName(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
     OnCreateEx(pAppName,
-               pEngineName,
-               cpuValidationLayerEnabled,
-               gpuValidationLayerEnabled,
-               instanceProperties,
-               deviceProperties);
+        pEngineName,
+        cpuValidationLayerEnabled,
+        gpuValidationLayerEnabled,
+        instanceProperties,
+        deviceProperties);
 }
 
 void Device::OnDestroy() {
@@ -91,15 +92,15 @@ auto Device::GetComputeQueue() const -> vk::Queue {
     return _computeQueue;
 }
 
-auto Device::GetPresentQueueFamilyIndex() const -> size_t {
+auto Device::GetPresentQueueFamilyIndex() const -> uint32_t {
     return _presentQueueFamilyIndex;
 }
 
-auto Device::GetGraphicsQueueFamilyIndex() const -> size_t {
+auto Device::GetGraphicsQueueFamilyIndex() const -> uint32_t {
     return _graphicsQueueFamilyIndex;
 }
 
-auto Device::GetComputeQueueFamilyIndex() const -> size_t {
+auto Device::GetComputeQueueFamilyIndex() const -> uint32_t {
     return _computeQueueFamilyIndex;
 }
 
@@ -146,11 +147,11 @@ void Device::GPUFlush() {
 }
 
 void Device::OnCreateEx(const char *pAppName,
-                        const char *pEngineName,
-                        bool cpuValidationLayerEnabled,
-                        bool gpuValidationLayerEnabled,
-                        InstanceProperties &instanceProperties,
-                        const DeviceProperties &deviceProperties) {
+    const char *pEngineName,
+    bool cpuValidationLayerEnabled,
+    bool gpuValidationLayerEnabled,
+    InstanceProperties &instanceProperties,
+    const DeviceProperties &deviceProperties) {
 
     std::vector<vk::QueueFamilyProperties> queueProps = _physicalDevice.getQueueFamilyProperties();
     ExceptionAssert(queueProps.size() > 1);
@@ -239,16 +240,16 @@ void Device::OnCreateEx(const char *pAppName,
     physicalDeviceFeatures2.pNext = &robustness2;
 
     vk::DeviceCreateInfo deviceCreateInfo = {
-    	.sType = vk::StructureType::eDeviceCreateInfo,
+        .sType = vk::StructureType::eDeviceCreateInfo,
         .pNext = nullptr,
         .queueCreateInfoCount = 2,
-    	.pQueueCreateInfos = queueCreateInfos,
+        .pQueueCreateInfos = queueCreateInfos,
         .enabledLayerCount = static_cast<uint32_t>(deviceProperties._deviceExtensionNames.size()),
         .ppEnabledLayerNames = deviceProperties._deviceExtensionNames.data(),
     };
 
     _device = _physicalDevice.createDevice(deviceCreateInfo);
-    vkutils::InitDeviceExtFunc(_device);
+    InitDeviceExtFunc();
 
     // ≥ı ºªØ VMA ∑÷≈‰∆˜
     VmaAllocatorCreateInfo allocatorInfo = {};
@@ -304,11 +305,11 @@ static vk::PhysicalDevice SelectPhysicalDevice(const std::vector<vk::PhysicalDev
 
 void Device::CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip) {
     vk::ApplicationInfo applicationInfo = {
-    	.pApplicationName = pAppName,
-    	.applicationVersion = 1,
-    	.pEngineName = pEngineName,
-    	.engineVersion = 1,
-    	.apiVersion = VK_VERSION_1_1,
+        .pApplicationName = pAppName,
+        .applicationVersion = 1,
+        .pEngineName = pEngineName,
+        .engineVersion = 1,
+        .apiVersion = VK_VERSION_1_1,
     };
 
     vk::InstanceCreateInfo instanceCreateInfo = {
@@ -320,7 +321,7 @@ void Device::CreateInstance(const char *pAppName, const char *pEngineName, const
         .ppEnabledExtensionNames = ip._instanceExtensionNames.data(),
     };
     _instance = vk::createInstance(instanceCreateInfo);
-    vkutils::InitInstanceExtFunc(_instance);
+    InitInstanceExtFunc();
 
     ExtDebugReportGetProcAddresses(_instance);
     ExtDebugReportOnCreate(_instance);
@@ -329,4 +330,18 @@ void Device::CreateInstance(const char *pAppName, const char *pEngineName, const
     _physicalDevice = SelectPhysicalDevice(physicalDevices);
 }
 
+void Device::InitDynamicLoader() {
+    vk::DynamicLoader dl;
+    PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
+        dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
+}
+
+void Device::InitInstanceExtFunc() {
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(_instance);
+}
+
+void Device::InitDeviceExtFunc() {
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(_device);
+}
 }    // namespace vkgfx

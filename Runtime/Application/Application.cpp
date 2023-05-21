@@ -1,6 +1,5 @@
 #include "Application.h"
 #include "Foundation/Logger.h"
-#include "VulkanUtils/utils.h"
 #include "VulkanRenderer/Device.h"
 
 #include <imgui.h>
@@ -60,7 +59,6 @@ void Application::SetupVulkan() {
 	    Exception::Throw("GLFW Vulkan Not Supported");
 	}
 
-	vkutils::InitDynamicLoader();
 	_pDevice = std::make_unique<vkgfx::Device>();
 	_pDevice->OnCreate("VulkanAPP", "Vulkan", true, true, _pWindow);
 }

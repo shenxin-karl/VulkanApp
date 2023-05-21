@@ -21,23 +21,23 @@
 
 namespace vkgfx {
 
-void SetResourceName(vk::Device device, vk::ObjectType objectType, uint64_t handle, const char *name) {
-    if (VULKAN_HPP_DEFAULT_DISPATCHER.vkSetDebugUtilsObjectNameEXT && handle && name) {
+void SetResourceName(vk::Device device, vk::ObjectType objectType, uint64_t handle, std::string_view name) {
+    if (VULKAN_HPP_DEFAULT_DISPATCHER.vkSetDebugUtilsObjectNameEXT && handle && !name.empty()) {
         std::unique_lock<std::mutex> lock(s_mutex);
         vk::DebugUtilsObjectNameInfoEXT nameInfo = {};
         nameInfo.sType = vk::StructureType::eDebugUtilsObjectNameInfoEXT;
         nameInfo.objectType = objectType;
         nameInfo.objectHandle = handle;
-        nameInfo.pObjectName = name;
+        nameInfo.pObjectName = name.data();
         device.setDebugUtilsObjectNameEXT(nameInfo);
     }
 }
 
-void SetPerfMarkerBegin(vk::CommandBuffer cmd, const char *name) {
-    if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBeginDebugUtilsLabelEXT && name) {
+void SetPerfMarkerBegin(vk::CommandBuffer cmd, std::string_view name) {
+    if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBeginDebugUtilsLabelEXT && !name.empty()) {
         std::array<float, 4> color = {1.0f, 0.0f, 0.0f, 1.0f};
 	    vk::DebugUtilsLabelEXT label = {
-            .pLabelName = name,
+            .pLabelName = name.data(),
             .color = color,
 	    };
         cmd.beginDebugUtilsLabelEXT(label);

@@ -179,8 +179,7 @@ SortUsingDeclarations: false
 # 在C风格类型转换后添加空格
 SpaceAfterCStyleCast: false
 
-
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: DontAlign
 AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowAllArgumentsOnNextLine: false
@@ -190,3 +189,16 @@ BinPackParameters: false
 
 EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: Never
+
+AlignConsecutiveBitFields: true
+
+AlignOperands: Align
+BreakInheritanceList: BeforeComma
+
+
+
+AlwaysBreakAfterReturnType: None
+
+BreakBeforeBinaryOperators:    None
+PenaltyBreakAssignment: 10000
+PenaltyReturnTypeOnItsOwnLine: 1000

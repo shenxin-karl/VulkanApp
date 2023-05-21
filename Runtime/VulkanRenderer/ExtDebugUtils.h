@@ -32,8 +32,16 @@ Inline(2) bool ExtDebugUtilsCheckInstanceExtensions(InstanceProperties &instance
 	return s_bCanUseDebugUtils;	
 }
 
-void SetResourceName(vk::Device device, vk::ObjectType objectType, uint64_t handle, const char *name);
-void SetPerfMarkerBegin(vk::CommandBuffer cmd, const char *name);
+void SetResourceName(vk::Device device, vk::ObjectType objectType, uint64_t handle, std::string_view name);
+void SetPerfMarkerBegin(vk::CommandBuffer cmd, std::string_view name);
 void SetPerfMarkerEnd(vk::CommandBuffer cmd);
+
+template<typename T>
+void SetResourceName(vk::Device device, T object, std::string_view name) {
+	using NativeType = typename T::NativeType;
+	vk::ObjectType objectType = object.objectType;
+	uint64_t handle = reinterpret_cast<uint64_t>(object.operator NativeType());
+	SetResourceName(device, objectType, handle, name);
+}
 
 }    // namespace vkgfx
