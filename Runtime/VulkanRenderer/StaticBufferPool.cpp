@@ -60,6 +60,10 @@ auto StaticBufferPool::OnCreate(Device *pDevice, std::size_t totalMemorySize, st
 }
 
 void StaticBufferPool::OnDestroy() {
+    if (_pDevice == nullptr) {
+	    return;
+    }
+
     VmaAllocator allocator = _pDevice->GetAllocator();
     if (_staticBuffer) {
         vmaDestroyBuffer(allocator, _staticBuffer, _staticBufferAlloc);

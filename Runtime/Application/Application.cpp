@@ -4,12 +4,14 @@
 
 #include <imgui.h>
 
+#include "VulkanRenderer/SwapChain.h"
+
 Application::Application() {
 
 }
 
 void Application::Startup() {
-	gLogger.Initialize();
+	gLogger->Initialize();
 	gLogger->StartLogging();
 
 	SetupGlfw();
@@ -17,7 +19,7 @@ void Application::Startup() {
 }
 
 void Application::Cleanup() {
-	gLogger.Destroy();
+	gLogger->Destroy();
 
 	DestroyVulkan();
 	DestroyGlfw();
@@ -59,13 +61,14 @@ void Application::SetupVulkan() {
 	    Exception::Throw("GLFW Vulkan Not Supported");
 	}
 
-	_pDevice = std::make_unique<vkgfx::Device>();
-	_pDevice->OnCreate("VulkanAPP", "Vulkan", true, true, _pWindow);
+	constexpr size_t kNumBackBuffer = 3;
+	vkgfx::gDevice->OnCreate("VulkanAPP", "Vulkan", true, true, _pWindow);
+	vkgfx::gSwapChain->OnCreate(vkgfx::gDevice, kNumBackBuffer, _pWindow);
 }
 
 void Application::DestroyVulkan() {
-	_pDevice->OnDestroy();
-	_pDevice = nullptr;
+	vkgfx::gSwapChain->OnDestroy();
+	vkgfx::gDevice->OnDestroy();
 }
 
 void Application::GlfwErrorCallback(int error, const char *description) {

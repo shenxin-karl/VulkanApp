@@ -3,6 +3,7 @@
 #include <vma/vk_mem_alloc.h>
 #include <GLFW/glfw3.h>
 #include "Foundation/NonCopyable.h"
+#include "Foundation/RuntimeStatic.h"
 
 namespace vkgfx {
 
@@ -67,4 +68,8 @@ private:
     VmaAllocator _hAllocator = nullptr;
     vk::PipelineCache _pipelineCache;
 };
+
+
+inline RuntimeStatic<Device> gDevice;
+
 }    // namespace vkgfx

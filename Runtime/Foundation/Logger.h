@@ -18,11 +18,10 @@ public:
     };
 	ENUM_FLAGS_AS_MEMBER(DebugLevel);
 private:
-	friend class RuntimeStatic<Logger>;
-    void Initialize();
-	void Destroy();
 	void LogMessage(DebugLevel level, const std::source_location &location, const std::string &message);
 public:
+    void Initialize();
+	void Destroy();
 	void SetLogPath(stdfs::path logPath);
 	void SetLogLevelMask(DebugLevel mask);
 	void SetPattern(const std::string &pattern);

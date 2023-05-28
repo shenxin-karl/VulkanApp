@@ -24,5 +24,4 @@ public:
 private:
     bool _isDone = false;
     GLFWwindow *_pWindow = nullptr;
-    std::unique_ptr<vkgfx::Device> _pDevice;
 };

@@ -2,6 +2,7 @@
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 #include "Foundation/NonCopyable.h"
+#include "Foundation/RuntimeStatic.h"
 
 namespace vkgfx {
 
@@ -52,5 +53,7 @@ private:
     uint32_t _semaphoreIndex = 0;
     uint32_t _prevSemaphoreIndex = 0;
 };
+
+inline RuntimeStatic<SwapChain> gSwapChain;
 
 }    // namespace vkgfx
