@@ -40,5 +40,7 @@ target("VulkanApp")
     add_packages("glfw")
     add_packages("vulkan-hpp")
     add_packages("vulkansdk")
+
+    add_defines("VMA_STATIC_VULKAN_FUNCTIONS=0", "VMA_DYNAMIC_VULKAN_FUNCTIONS=1")
     add_packages("vulkan-memory-allocator")
 target_end()

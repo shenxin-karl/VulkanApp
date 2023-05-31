@@ -12,6 +12,8 @@
 #define VMA_IMPLEMENTATION
 #include <vma/vk_mem_alloc.h>
 
+#include "VKException.h"
+
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace vkgfx {
@@ -76,7 +78,7 @@ void Device::OnDestroy() {
     _instance = nullptr;
 }
 
-auto Device::GetDevice() const -> vk::Device {
+auto Device::GetVKDevice() const -> vk::Device {
     return _device;
 }
 
@@ -163,7 +165,7 @@ void Device::OnCreateEx(const char *pAppName,
     for (size_t i = 0; i < queueProps.size(); ++i) {
         const vk::QueueFamilyProperties &prop = queueProps[i];
         if (prop.queueFlags & vk::QueueFlagBits::eGraphics) {
-            if (_graphicsQueueFamilyIndex != -1) {
+            if (_graphicsQueueFamilyIndex == -1) {
                 _graphicsQueueFamilyIndex = i;
             }
             if (_physicalDevice.getSurfaceSupportKHR(i, _surfaceKHR)) {
@@ -186,8 +188,8 @@ void Device::OnCreateEx(const char *pAppName,
     for (size_t i = 0; i < queueProps.size(); ++i) {
         const vk::QueueFamilyProperties &prop = queueProps[i];
         if (prop.queueFlags & vk::QueueFlagBits::eCompute) {
-            if (_computeQueueFamilyIndex != -1) {
-                _graphicsQueueFamilyIndex = i;
+            if (_computeQueueFamilyIndex == -1) {
+                _computeQueueFamilyIndex = i;
             }
             if (i != _graphicsQueueFamilyIndex) {
                 _computeQueueFamilyIndex = i;
@@ -252,11 +254,16 @@ void Device::OnCreateEx(const char *pAppName,
     InitDeviceExtFunc();
 
     // ³õÊ¼»¯ VMA ·ÖÅäÆ÷
+    VmaVulkanFunctions func = {};
+	func.vkGetInstanceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr;
+	func.vkGetDeviceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceProcAddr;
+
     VmaAllocatorCreateInfo allocatorInfo = {};
     allocatorInfo.physicalDevice = GetPhysicalDevice();
-    allocatorInfo.device = GetDevice();
+    allocatorInfo.device = GetVKDevice();
     allocatorInfo.instance = _instance;
-    vmaCreateAllocator(&allocatorInfo, &_hAllocator);
+    allocatorInfo.pVulkanFunctions = &func;
+    VKException::Throw(vmaCreateAllocator(&allocatorInfo, &_hAllocator));
 
     _graphicsQueue = _device.getQueue(_graphicsQueueFamilyIndex, 0);
     if (_presentQueueFamilyIndex == _graphicsQueueFamilyIndex) {

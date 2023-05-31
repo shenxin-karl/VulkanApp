@@ -6,21 +6,15 @@
 
 namespace vkgfx {
 
-SwapChain::SwapChain() {
-}
-
-SwapChain::~SwapChain() {
-}
-
 void SwapChain::OnCreate(Device *pDevice, uint32_t numBackBuffers, GLFWwindow *pWindow) {
-    _pDevice = pDevice;
+    SetDevice(pDevice);
     _backBufferCount = numBackBuffers;
     _presentQueue = pDevice->GetPresentQueue();
 
     _swapChainFormat.format = vk::Format::eR8G8B8A8Unorm;
     _swapChainFormat.colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 
-    vk::Device device = pDevice->GetDevice();
+    vk::Device device = pDevice->GetVKDevice();
     _cmdBufferExecutedFences.resize(numBackBuffers);
     _imageAvailableSemaphores.resize(numBackBuffers);
     _renderFinishedSemaphores.resize(numBackBuffers);
@@ -35,20 +29,23 @@ void SwapChain::OnCreate(Device *pDevice, uint32_t numBackBuffers, GLFWwindow *p
         _renderFinishedSemaphores[i] = device.createSemaphore(semaphoreCreateInfo);
     }
     CreateRenderPass();
+    SetIsCreate(true);
 }
 
 void SwapChain::OnDestroy() {
     DestroyRenderPass();
-    vk::Device device = _pDevice->GetDevice();
+    vk::Device device = GetDevice()->GetVKDevice();
     for (size_t i = 0; i < _cmdBufferExecutedFences.size(); ++i) {
         device.destroy(_cmdBufferExecutedFences[i]);
-        ;
         device.destroySemaphore(_imageAvailableSemaphores[i]);
         device.destroySemaphore(_renderFinishedSemaphores[i]);
     }
     _cmdBufferExecutedFences.clear();
     _imageAvailableSemaphores.clear();
     _renderFinishedSemaphores.clear();
+
+    SetIsCreate(false);
+    SetDevice(nullptr);
 }
 
 void SwapChain::GetSemaphores(vk::Semaphore &imageAvailableSemaphore,
@@ -77,7 +74,7 @@ auto SwapChain::Present() -> vk::Result {
 }
 
 auto SwapChain::WaitForSwapChain() -> uint32_t {
-    vk::Device device = _pDevice->GetDevice();
+    vk::Device device = GetDevice()->GetVKDevice();
     VKException::Throw(device.acquireNextImageKHR(_swapChain,
         UINT64_MAX,
         _imageAvailableSemaphores[_semaphoreIndex],
@@ -120,7 +117,7 @@ auto SwapChain::GetCurrentFrameBuffer() const -> vk::Framebuffer {
 }
 
 void SwapChain::CreateRTV() {
-    auto device = _pDevice->GetDevice();
+    auto device = GetDevice()->GetVKDevice();
     _imageViews.resize(_images.size());
     for (size_t i = 0; i < _imageViews.size(); ++i) {
         vk::ImageViewCreateInfo imageViewCreateInfo;
@@ -142,7 +139,7 @@ void SwapChain::CreateRTV() {
 }
 
 void SwapChain::DestroyRTV() {
-    auto device = _pDevice->GetDevice();
+    auto device = GetDevice()->GetVKDevice();
     for (vk::ImageView imageView : _imageViews) {
         device.destroyImageView(imageView);
     }
@@ -176,25 +173,24 @@ void SwapChain::CreateRenderPass() {
     dep.dstSubpass = VK_SUBPASS_EXTERNAL;
 
     vk::RenderPassCreateInfo renderPassCreateInfo;
-    renderPassCreateInfo.sType = vk::StructureType::eRenderPassCreateInfo;
     renderPassCreateInfo.attachmentCount = 1;
     renderPassCreateInfo.pAttachments = attachments;
     renderPassCreateInfo.subpassCount = 1;
     renderPassCreateInfo.pSubpasses = &subpass;
     renderPassCreateInfo.dependencyCount = 1;
     renderPassCreateInfo.pDependencies = &dep;
-    _renderPass = _pDevice->GetDevice().createRenderPass(renderPassCreateInfo);
+    _renderPass = GetDevice()->GetVKDevice().createRenderPass(renderPassCreateInfo);
 }
 
 void SwapChain::DestroyRenderPass() {
     if (_renderPass) {
-        _pDevice->GetDevice().destroyRenderPass(_renderPass);
+        GetDevice()->GetVKDevice().destroyRenderPass(_renderPass);
         _renderPass = nullptr;
     }
 }
 
 void SwapChain::CreateFrameBuffers(size_t width, size_t height) {
-    vk::Device device = _pDevice->GetDevice();
+    vk::Device device = GetDevice()->GetVKDevice();
     _framebuffers.resize(_imageViews.size());
     for (size_t i = 0; i < _framebuffers.size(); ++i) {
         vk::ImageView attachments[] = {_imageViews[i]};
@@ -212,7 +208,7 @@ void SwapChain::CreateFrameBuffers(size_t width, size_t height) {
 }
 
 void SwapChain::DestroyFrameBuffers() {
-    vk::Device device = _pDevice->GetDevice();
+    vk::Device device = GetDevice()->GetVKDevice();
     for (size_t i = 0; i < _framebuffers.size(); ++i) {
         device.destroyFramebuffer(_framebuffers[i]);
     }
@@ -223,8 +219,8 @@ void SwapChain::OnCreateWindowDependentResources(size_t width, size_t height, bo
     _VSyncOn = bVSyncOn;
     CreateRenderPass();
 
-    vk::PhysicalDevice physicalDevice = _pDevice->GetPhysicalDevice();
-    vk::SurfaceKHR surface = _pDevice->GetSurface();
+    vk::PhysicalDevice physicalDevice = GetDevice()->GetPhysicalDevice();
+    vk::SurfaceKHR surface = GetDevice()->GetSurface();
     vk::SurfaceCapabilitiesKHR surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
 
     vk::Extent2D swapChainExtent;
@@ -244,10 +240,10 @@ void SwapChain::OnCreateWindowDependentResources(size_t width, size_t height, bo
         }
     }
 
-    vk::SurfaceTransformFlagBitsKHR preTransform =
-        (surfaceCapabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity)
-            ? vk::SurfaceTransformFlagBitsKHR::eIdentity
-            : surfaceCapabilities.currentTransform;
+    vk::SurfaceTransformFlagBitsKHR preTransform = (surfaceCapabilities.supportedTransforms &
+                                                       vk::SurfaceTransformFlagBitsKHR::eIdentity)
+                                                       ? vk::SurfaceTransformFlagBitsKHR::eIdentity
+                                                       : surfaceCapabilities.currentTransform;
     vk::CompositeAlphaFlagBitsKHR compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
     vk::CompositeAlphaFlagBitsKHR compositeAlphaFlags[4] = {
         vk::CompositeAlphaFlagBitsKHR::eOpaque,
@@ -278,15 +274,16 @@ void SwapChain::OnCreateWindowDependentResources(size_t width, size_t height, bo
     swapChainCreateInfo.clipped = true;
     swapChainCreateInfo.imageUsage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eColorAttachment;
     swapChainCreateInfo.imageSharingMode = vk::SharingMode::eExclusive;
-    uint32_t queueFamilyIndices[2] = {_pDevice->GetGraphicsQueueFamilyIndex(), _pDevice->GetPresentQueueFamilyIndex()};
+    uint32_t queueFamilyIndices[2] = {GetDevice()->GetGraphicsQueueFamilyIndex(),
+        GetDevice()->GetPresentQueueFamilyIndex()};
     if (queueFamilyIndices[0] != queueFamilyIndices[1]) {
         swapChainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
         swapChainCreateInfo.queueFamilyIndexCount = 2;
         swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
     }
 
-    _swapChain = _pDevice->GetDevice().createSwapchainKHR(swapChainCreateInfo);
-    _images = _pDevice->GetDevice().getSwapchainImagesKHR(_swapChain);
+    _swapChain = GetDevice()->GetVKDevice().createSwapchainKHR(swapChainCreateInfo);
+    _images = GetDevice()->GetVKDevice().getSwapchainImagesKHR(_swapChain);
     ExceptionAssert(_backBufferCount == _images.size());
 
     CreateRTV();
@@ -298,7 +295,7 @@ void SwapChain::OnDestroyWindowDependentResources() {
     DestroyRenderPass();
     DestroyFrameBuffers();
     DestroyRTV();
-    _pDevice->GetDevice().destroySwapchainKHR(_swapChain);
+    GetDevice()->GetVKDevice().destroySwapchainKHR(_swapChain);
 }
 
 }    // namespace vkgfx

@@ -1,11 +1,12 @@
 #pragma once
 #include <cstdint>
 #include <vulkan/vulkan.hpp>
+#include "VKObject.h"
 
 namespace vkgfx {
 
 class Device;
-class CommandBufferRing {
+class CommandBufferRing : public VKObject {
 public:
     void OnCreate(Device *pDevice,
         uint32_t numberFrameOfBackBuffers,
@@ -24,7 +25,6 @@ private:
         std::vector<vk::CommandBuffer> commandBuffers;
     };
 private:
-    Device *_pDevice = nullptr;
     uint32_t _frameIndex = 0;
     uint32_t _numberFrameOfAllocators = 0;
     uint32_t _commandBufferPreBackBuffer = 0;

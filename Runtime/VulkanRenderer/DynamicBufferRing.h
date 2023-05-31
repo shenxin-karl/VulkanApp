@@ -2,13 +2,13 @@
 #include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include "Ring.h"
-#include "Foundation/NonCopyable.h"
 #include "Foundation/PreprocessorDirectives.h"
+#include "VKObject.h"
 
 namespace vkgfx {
 
 class Device;
-class DynamicBufferRing : public NonCopyable {
+class DynamicBufferRing : public VKObject {
 public:
     enum BufferType {
         Vertex = 1 << 0,
@@ -35,7 +35,6 @@ public:
     }
 private:
     void *_pData = nullptr;
-    Device *_pDevice = nullptr;
     RingWithTabs _mem;
     size_t _memTotalSize = 0;
     vk::Buffer _buffer;

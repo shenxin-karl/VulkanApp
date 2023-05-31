@@ -10,7 +10,6 @@ void CommandBufferRing::OnCreate(Device *pDevice,
     uint32_t commandBufferPreFrame,
     bool compute) {
 
-    _pDevice = pDevice;
     _numberFrameOfAllocators = numberFrameOfBackBuffers;
     _commandBufferPreBackBuffer = commandBufferPreFrame;
     _frameCommandBuffers.resize(numberFrameOfBackBuffers);
@@ -18,7 +17,7 @@ void CommandBufferRing::OnCreate(Device *pDevice,
     vk::Flags<vk::CommandPoolCreateFlagBits> commandPoolFlags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
                                                                 vk::CommandPoolCreateFlagBits::eTransient;
     uint32_t familyIndex = (compute ? pDevice->GetComputeQueueFamilyIndex() : pDevice->GetGraphicsQueueFamilyIndex());
-    vk::Device device = pDevice->GetDevice();
+    vk::Device device = pDevice->GetVKDevice();
 
     vk::CommandPoolCreateInfo commandPoolCreateInfo;
     commandPoolCreateInfo.queueFamilyIndex = familyIndex;
@@ -37,21 +36,26 @@ void CommandBufferRing::OnCreate(Device *pDevice,
         frame.commandBuffers = device.allocateCommandBuffers(cmdCreateInfo);
         frame.executedFinishedFence = device.createFence(fenceCreateInfo);
     }
+
+    SetIsCreate(true);
+    SetDevice(pDevice);
 }
 
 void CommandBufferRing::OnDestroy() {
-    vk::Device device = _pDevice->GetDevice();
+    vk::Device device = GetDevice()->GetVKDevice();
     for (auto &frame : _frameCommandBuffers) {
         device.freeCommandBuffers(frame.commandPool, frame.commandBuffers);
         device.destroyCommandPool(frame.commandPool);
         device.destroyFence(frame.executedFinishedFence);
     }
     _frameCommandBuffers.clear();
+    SetIsCreate(false);
+    SetDevice(nullptr);
 }
 
 void CommandBufferRing::OnBeginFrame() {
     _frameIndex = (_frameIndex + 1) % _numberFrameOfAllocators;
-    vk::Device device = _pDevice->GetDevice();
+    vk::Device device = GetDevice()->GetVKDevice();
     auto &currentFrame = _frameCommandBuffers[_frameIndex];
     VKException::Throw(device.waitForFences(1, &currentFrame.executedFinishedFence, VK_TRUE, UINT64_MAX));
     VKException::Throw(device.resetFences(1, &currentFrame.executedFinishedFence));

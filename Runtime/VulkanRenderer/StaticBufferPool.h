@@ -1,15 +1,14 @@
 #pragma once
-#include "Foundation/NonCopyable.h"
 #include <vulkan/vulkan.hpp>
 #include <vma/vk_mem_alloc.h>
+#include "VKObject.h"
 
 namespace vkgfx {
 
 class Device;
-class StaticBufferPool : public NonCopyable {
+class StaticBufferPool : public VKObject {
 public:
     StaticBufferPool();
-    ~StaticBufferPool();
     auto OnCreate(Device *pDevice, std::size_t totalMemorySize, std::string_view name) -> vk::Result;
     void OnDestroy();
     auto AllocBuffer(size_t numElement, size_t stride, void **pData) -> std::optional<vk::DescriptorBufferInfo>;
@@ -24,7 +23,6 @@ public:
     }
 private:
     void *_pData = nullptr;
-    Device *_pDevice = nullptr;
     size_t _memoryOffset = 0;
     size_t _totalMemorySize = 0;
     vk::Buffer _staticBuffer;

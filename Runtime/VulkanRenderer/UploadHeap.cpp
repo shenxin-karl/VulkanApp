@@ -7,10 +7,7 @@
 namespace vkgfx {
 
 void UploadHeap::OnCreate(Device *pDevice, size_t size) {
-    Exception::CondThrow(_pDevice == nullptr, "Repeated initialization");
-    _pDevice = pDevice;
-
-    vk::Device device = pDevice->GetDevice();
+    vk::Device device = pDevice->GetVKDevice();
     VmaAllocator allocator = pDevice->GetAllocator();
 
     vk::CommandPoolCreateInfo poolCreateInfo;
@@ -49,15 +46,15 @@ void UploadHeap::OnCreate(Device *pDevice, size_t size) {
 
     vk::CommandBufferBeginInfo beginInfo;
     _commandBuffer.begin(beginInfo);
+
+    SetIsCreate(true);
+    SetDevice(pDevice);
 }
 
 void UploadHeap::OnDestroy() {
-    if (_pDevice == nullptr) {
-        return;
-    }
-
-    vk::Device device = _pDevice->GetDevice();
-    VmaAllocator allocator = _pDevice->GetAllocator();
+    ExceptionAssert(GetIsCreate());
+    vk::Device device = GetDevice()->GetVKDevice();
+    VmaAllocator allocator = GetDevice()->GetAllocator();
     device.destroyFence(_fence);
     device.destroyCommandPool(_commandPool);
     vmaUnmapMemory(allocator, _bufferAlloc);
@@ -65,12 +62,14 @@ void UploadHeap::OnDestroy() {
 
     _buffer = nullptr;
     _bufferAlloc = nullptr;
-    _pDevice = nullptr;
     _pDataBegin = nullptr;
     _pDataCur = nullptr;
     _pDataEnd = nullptr;
     ExceptionAssert(!_imageUploadJobs.empty());
     _imageUploadJobs.clear();
+
+    SetIsCreate(false);
+    SetDevice(nullptr);
 }
 
 auto UploadHeap::AllocBuffer(size_t size, size_t align) -> uint8_t * {
@@ -93,9 +92,9 @@ void UploadHeap::Flush() {
         return;
     }
 
-    vk::Device device = _pDevice->GetDevice();
-    vk::Queue graphicsQueue = _pDevice->GetGraphicsQueue();
-    VmaAllocator allocator = _pDevice->GetAllocator();
+    vk::Device device = GetDevice()->GetVKDevice();
+    vk::Queue graphicsQueue = GetDevice()->GetGraphicsQueue();
+    VmaAllocator allocator = GetDevice()->GetAllocator();
     VKException::Throw(vmaFlushAllocation(allocator, _bufferAlloc, 0, (_pDataCur - _pDataBegin)));
 
     std::vector<vk::ImageMemoryBarrier> imagePrevBarriers;
@@ -149,6 +148,14 @@ void UploadHeap::Flush() {
     vk::CommandBufferBeginInfo cmdBeginInfo;
     _commandBuffer.begin(cmdBeginInfo);
     _pDataCur = _pDataBegin;
+}
+
+auto UploadHeap::GetAllocatableSize(size_t align) const -> size_t {
+    if (align == 0) {
+        return _pDataEnd - _pDataCur;
+    }
+    uint8_t *ptr = reinterpret_cast<uint8_t *>(AlignUp<intptr_t>(reinterpret_cast<intptr_t>(_pDataCur), align));
+    return _pDataEnd - ptr;
 }
 
 }    // namespace vkgfx

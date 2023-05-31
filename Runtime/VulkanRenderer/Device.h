@@ -20,7 +20,7 @@ public:
         bool gpuValidationLayerEnabled,
         GLFWwindow *pWindow);
     void OnDestroy();
-    auto GetDevice() const -> vk::Device;
+    auto GetVKDevice() const -> vk::Device;
     auto GetPresentQueue() const -> vk::Queue;
     auto GetGraphicsQueue() const -> vk::Queue;
     auto GetComputeQueue() const -> vk::Queue;

@@ -3,23 +3,19 @@
 #include "ExtDebugUtils.h"
 #include "Misc.h"
 #include "Foundation/Exception.h"
+#include "Foundation/TypeAlias.h"
 
 namespace vkgfx {
 
 StaticBufferPool::StaticBufferPool() {
 }
 
-StaticBufferPool::~StaticBufferPool() {
-    OnDestroy();
-}
-
 auto StaticBufferPool::OnCreate(Device *pDevice, std::size_t totalMemorySize, std::string_view name) -> vk::Result {
-    _pDevice = pDevice;
     _totalMemorySize = totalMemorySize;
     _memoryOffset = 0;
 
     VkResult res = {};
-    vk::Device device = pDevice->GetDevice();
+    vk::Device device = pDevice->GetVKDevice();
     VmaAllocator allocator = pDevice->GetAllocator();
 
     VkBufferCreateInfo bufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
@@ -56,15 +52,14 @@ auto StaticBufferPool::OnCreate(Device *pDevice, std::size_t totalMemorySize, st
     res = vmaMapMemory(allocator, _uploadBufferAlloc, &_pData);
     ExceptionAssert(res == VK_SUCCESS);
 
+    SetIsCreate(true);
+    SetDevice(pDevice);
     return static_cast<vk::Result>(res);
 }
 
 void StaticBufferPool::OnDestroy() {
-    if (_pDevice == nullptr) {
-	    return;
-    }
-
-    VmaAllocator allocator = _pDevice->GetAllocator();
+    ExceptionAssert(GetIsCreate());
+    VmaAllocator allocator = GetDevice()->GetAllocator();
     if (_staticBuffer) {
         vmaDestroyBuffer(allocator, _staticBuffer, _staticBufferAlloc);
         _staticBuffer = nullptr;
@@ -72,7 +67,6 @@ void StaticBufferPool::OnDestroy() {
     }
 
     FreeUploadHeap();
-    _pDevice = nullptr;
     _memoryOffset = 0;
     _totalMemorySize = 0;
 }
@@ -90,7 +84,7 @@ auto StaticBufferPool::AllocBuffer(size_t numElement, size_t stride, void **pDat
         return std::nullopt;
     }
 
-    *pData = (_pData + _memoryOffset);
+    *pData = (static_cast<uint8 *>(_pData) + _memoryOffset);
     vk::DescriptorBufferInfo info;
     info.buffer = _staticBuffer;
     info.offset = _memoryOffset;
@@ -130,7 +124,7 @@ void StaticBufferPool::UploadData(vk::CommandBuffer cmd) {
 
 void StaticBufferPool::FreeUploadHeap() {
     ExceptionAssert(_uploadBuffer);
-    VmaAllocator allocator = _pDevice->GetAllocator();
+    VmaAllocator allocator = GetDevice()->GetAllocator();
     if (_uploadBuffer) {
         vmaUnmapMemory(allocator, _uploadBufferAlloc);
         vmaDestroyBuffer(allocator, _uploadBuffer, _uploadBufferAlloc);

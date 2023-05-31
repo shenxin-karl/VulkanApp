@@ -1,16 +1,14 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
-#include "Foundation/NonCopyable.h"
 #include "Foundation/RuntimeStatic.h"
+#include "VKObject.h"
 
 namespace vkgfx {
 
 class Device;
-class SwapChain : private NonCopyable {
+class SwapChain : private VKObject {
 public:
-    SwapChain();
-    ~SwapChain();
     void OnCreate(Device *pDevice, uint32_t numBackBuffers, GLFWwindow *pWindow);
     void OnDestroy();
     void GetSemaphores(vk::Semaphore &imageAvailableSemaphore,
@@ -37,7 +35,6 @@ private:
 	void OnDestroyWindowDependentResources();
 private:
     bool _VSyncOn = false;
-    Device *_pDevice = nullptr;
     vk::SwapchainKHR _swapChain;
     vk::SurfaceFormatKHR _swapChainFormat;
     vk::Queue _presentQueue;

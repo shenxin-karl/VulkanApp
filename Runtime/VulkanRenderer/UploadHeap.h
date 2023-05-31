@@ -1,12 +1,12 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include <vma/vk_mem_alloc.h>
-#include "Foundation/NonCopyable.h"
+#include "VKObject.h"
 
 namespace vkgfx {
 
 class Device;
-class UploadHeap : public NonCopyable {
+class UploadHeap : public VKObject {
 public:
     struct ImageUploadJob {
         vk::Image image;
@@ -20,6 +20,7 @@ public:
     auto AllocBuffer(size_t size, size_t align) -> uint8_t *;
     void AddJob(const ImageUploadJob &job);
     void Flush();
+    auto GetAllocatableSize(size_t align = 0) const -> size_t;
 
     auto GetBasePtr() const -> uint8_t * {
         return _pDataBegin;
@@ -31,7 +32,6 @@ public:
         return _commandBuffer;
     }
 private:
-    Device *_pDevice = nullptr;
     vk::CommandPool _commandPool;
     vk::CommandBuffer _commandBuffer;
     vk::Fence _fence;

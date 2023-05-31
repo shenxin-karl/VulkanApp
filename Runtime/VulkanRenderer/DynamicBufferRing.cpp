@@ -3,6 +3,7 @@
 #include "VKException.h"
 #include "ExtDebugUtils.h"
 #include "Misc.h"
+#include "Foundation/TypeAlias.h"
 
 namespace vkgfx {
 
@@ -12,7 +13,6 @@ void DynamicBufferRing::OnCreate(Device *pDevice,
     size_t memoryTotalSize,
     std::string_view name) {
 
-    _pDevice = pDevice;
     _memTotalSize = memoryTotalSize;
     _mem.OnCreate(numBackBuffers, _memTotalSize);
 
@@ -37,7 +37,7 @@ void DynamicBufferRing::OnCreate(Device *pDevice,
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
     VkBuffer buffer;
-    vk::Device device = pDevice->GetDevice();
+    vk::Device device = pDevice->GetVKDevice();
     VmaAllocator allocator = pDevice->GetAllocator();
     VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &buffer, &_bufferAlloc, nullptr);
     VKException::Throw(res);
@@ -47,18 +47,23 @@ void DynamicBufferRing::OnCreate(Device *pDevice,
 
     res = vmaMapMemory(pDevice->GetAllocator(), _bufferAlloc, &_pData);
     VKException::Throw(res);
+
+    SetIsCreate(true);
+    SetDevice(pDevice);
 }
 
 void DynamicBufferRing::OnDestroy() {
     if (_buffer) {
-        VmaAllocator allocator = _pDevice->GetAllocator();
+        VmaAllocator allocator = GetDevice()->GetAllocator();
         vmaUnmapMemory(allocator, _bufferAlloc);
         vmaDestroyBuffer(allocator, _buffer, _bufferAlloc);
         _pData = nullptr;
-        _pDevice = nullptr;
         _memTotalSize = 0;
     }
     _mem.OnDestroy();
+
+    SetIsCreate(false);
+    SetDevice(nullptr);
 }
 
 auto DynamicBufferRing::AllocBuffer(size_t size, void **pData) -> std::optional<vk::DescriptorBufferInfo> {
@@ -69,7 +74,7 @@ auto DynamicBufferRing::AllocBuffer(size_t size, void **pData) -> std::optional<
         return std::nullopt;
     }
 
-    *pData = _pData + memOffset;
+    *pData = static_cast<uint8 *>(_pData) + memOffset;
     vk::DescriptorBufferInfo bufferInfo;
     bufferInfo.buffer = _buffer;
     bufferInfo.offset = memOffset;
@@ -100,7 +105,7 @@ void DynamicBufferRing::SetDescriptorSet(uint32_t index, size_t size, vk::Descri
     write.dstArrayElement = 0;
     write.dstBinding = index;
 
-    vk::Device device = _pDevice->GetDevice();
+    vk::Device device = GetDevice()->GetVKDevice();
     device.updateDescriptorSets(1, &write, 0, nullptr);
 }
 
