@@ -67,6 +67,7 @@ void Application::SetupVulkan() {
 }
 
 void Application::DestroyVulkan() {
+	vkgfx::gDevice->GPUFlush();
 	vkgfx::gSwapChain->OnDestroy();
 	vkgfx::gDevice->OnDestroy();
 }

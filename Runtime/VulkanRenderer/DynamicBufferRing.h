@@ -26,6 +26,7 @@ public:
     void OnDestroy();
     auto AllocBuffer(size_t size, void **pData) -> std::optional<vk::DescriptorBufferInfo>;
     auto AllocBuffer(size_t size, void *pInitData) -> std::optional<vk::DescriptorBufferInfo>;
+    auto GetAllocatableSize() const -> size_t;
     void SetDescriptorSet(uint32_t index, size_t size, vk::DescriptorSet descriptorSet);
     void OnBeginFrame();
 

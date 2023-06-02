@@ -15,6 +15,7 @@ public:
     auto AllocBuffer(size_t numElement, size_t stride, void *pInitData) -> std::optional<vk::DescriptorBufferInfo>;
     void UploadData(vk::CommandBuffer cmd, const vk::DescriptorBufferInfo &bufferInfo);
     void UploadData(vk::CommandBuffer cmd);
+    auto GetAllocatableSize() const -> size_t;
     void FreeUploadHeap();
 
     template<typename T>

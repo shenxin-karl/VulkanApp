@@ -7,7 +7,7 @@ set_toolset("cxx", "clang-cl")
 add_cxxflags("-std:c++20", { tools = { "clang-cl" }})
 add_defines("__cpp_consteval", { tools = { "clang-cl" }})
 add_defines("NOMINMAX", "UNICODE", "_UNICODE")
-add_rules("mode.debug", "mode.release", "mode.releasedbg")
+add_rules("mode.debug", "mode.releasedbg")
 set_arch("x64")
 
 

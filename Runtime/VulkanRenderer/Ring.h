@@ -74,6 +74,10 @@ public:
         }
         return false;
     }
+
+    size_t GetAllocatableSize() const {
+	    return _totalSize - _allocatedSize;
+    }
 private:
     uint32_t _head = 0;
     uint32_t _totalSize = 0;
@@ -134,6 +138,10 @@ public:
         // free all the entries for the oldest buffer in one go
         uint32_t memToFree = _allocatedMemPerBackBuffer[_backBufferIndex];
         _mem.Free(memToFree);
+    }
+
+    size_t GetAllocatableSize() const {
+	    return _mem.GetAllocatableSize();
     }
 private:
     //internal ring buffer

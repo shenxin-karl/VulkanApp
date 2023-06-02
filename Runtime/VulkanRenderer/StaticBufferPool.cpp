@@ -122,6 +122,10 @@ void StaticBufferPool::UploadData(vk::CommandBuffer cmd) {
     cmd.copyBuffer(_staticBuffer, _uploadBuffer, region);
 }
 
+auto StaticBufferPool::GetAllocatableSize() const -> size_t {
+    return _totalMemorySize - _memoryOffset;
+}
+
 void StaticBufferPool::FreeUploadHeap() {
     ExceptionAssert(_uploadBuffer);
     VmaAllocator allocator = GetDevice()->GetAllocator();

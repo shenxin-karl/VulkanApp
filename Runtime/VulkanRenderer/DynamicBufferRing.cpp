@@ -91,6 +91,10 @@ auto DynamicBufferRing::AllocBuffer(size_t size, void *pInitData) -> std::option
     return res;
 }
 
+auto DynamicBufferRing::GetAllocatableSize() const -> size_t {
+    return _mem.GetAllocatableSize();
+}
+
 void DynamicBufferRing::SetDescriptorSet(uint32_t index, size_t size, vk::DescriptorSet descriptorSet) {
     vk::DescriptorBufferInfo out = {};
     out.buffer = _buffer;
