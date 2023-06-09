@@ -11,6 +11,8 @@ add_defines("NOMINMAX", "UNICODE", "_UNICODE")
 add_rules("mode.debug", "mode.releasedbg")
 set_arch("x64")
 
+includes("xmake/dxc.lua")
+includes("xmake/stduuid.lua")
 
 -- requires packages
 add_requires("fmt 9.1.0")
@@ -20,8 +22,7 @@ add_requires("glfw 3.3.8")
 add_requires("vulkan-hpp v1.3.250", {verify = false})        
 add_requires("vulkansdk")
 add_requires("vulkan-memory-allocator v3.0.1")
-
-includes("xmake/dxc.lua")
+add_requires("stduuid", {debug = isDebug, configs = {vs_runtime = ERUEKA_VS_RUNTIME}})
 
 target("VulkanApp")
     set_languages("c++latest")
@@ -47,6 +48,8 @@ target("VulkanApp")
     add_defines("VMA_STATIC_VULKAN_FUNCTIONS=0", "VMA_DYNAMIC_VULKAN_FUNCTIONS=1")
     add_packages("vulkan-memory-allocator")
 
+    add_packages("stduuid")
+    
     -- link
     local dxcDir = path.join(THIRD_PARTY_DIR, "dxc")
     link_dxc_compiler(dxcDir)

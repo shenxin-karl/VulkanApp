@@ -1,0 +1,14 @@
+#pragma once
+#include <uuid.h>
+
+class UUID128 : public uuids::uuid {
+public:
+    static auto New() -> UUID128;
+    static auto New(std::string_view name) -> UUID128;
+    static auto New(std::wstring_view name) -> UUID128;
+private:
+    UUID128(const uuids::uuid &id);
+    static constexpr std::string_view sClassUUID = "19128E59-A779-45B1-8AD9-3F2191D51412";
+    static auto GetNameGenerator() -> uuids::uuid_name_generator &;
+    static auto GetRandomGenerator() -> uuids::uuid_random_generator &;
+};
