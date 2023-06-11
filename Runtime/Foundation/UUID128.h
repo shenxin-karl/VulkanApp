@@ -1,7 +1,9 @@
 #pragma once
 #include <uuid.h>
+#include "Serializer/TransferBase.hpp"
 
 class UUID128 : public uuids::uuid {
+    DECLARE_SERIALIZER(UUID128)
 public:
     static auto New() -> UUID128;
     static auto New(std::string_view name) -> UUID128;

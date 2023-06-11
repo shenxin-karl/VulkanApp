@@ -1,7 +1,7 @@
 local PROJECTION_DIR = os.curdir()
 local RUNTIME_DIR = path.join(PROJECTION_DIR, "Runtime")
 local THIRD_PARTY_DIR = path.join(PROJECTION_DIR, "ThirdParty")
-
+local BINARY_DIR = path.join(PROJECTION_DIR, "Bin");
 
 set_toolset("cc", "clang-cl")
 set_toolset("cxx", "clang-cl")
@@ -22,7 +22,8 @@ add_requires("glfw 3.3.8")
 add_requires("vulkan-hpp v1.3.250", {verify = false})        
 add_requires("vulkansdk")
 add_requires("vulkan-memory-allocator v3.0.1")
-add_requires("stduuid", {debug = isDebug, configs = {vs_runtime = ERUEKA_VS_RUNTIME}})
+add_requires("stduuid", {debug = isDebug})
+add_requires("jsoncpp 1.9.5", {debug = isDebug, configs = {shared = false}})
 
 target("VulkanApp")
     set_languages("c++latest")
@@ -31,7 +32,7 @@ target("VulkanApp")
     add_headerfiles("**.h")
     add_headerfiles("**.hpp")
     add_headerfiles("**.inc")
-    add_files("**.cpp")
+    add_files("Runtime/**.cpp")
     add_includedirs(RUNTIME_DIR)
     add_defines("PLATFORM_WIN")
     add_defines("VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1")
@@ -49,8 +50,17 @@ target("VulkanApp")
     add_packages("vulkan-memory-allocator")
 
     add_packages("stduuid")
-    
+    add_packages("jsoncpp")
+
+    set_targetdir(BINARY_DIR)
+
     -- link
     local dxcDir = path.join(THIRD_PARTY_DIR, "dxc")
+    set_values("dxcDir", dxcDir)
     link_dxc_compiler(dxcDir)
+
+    set_values("on_install_dxc", on_install_dxc)
+    on_install(function (target)
+        target:values("on_install_dxc")(target, target:values("dxcDir"))
+    end)
 target_end()

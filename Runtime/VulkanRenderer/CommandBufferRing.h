@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <vulkan/vulkan.hpp>
 #include "VKObject.h"
+#include "Foundation/RuntimeStatic.h"
 
 namespace vkgfx {
 
@@ -30,5 +31,7 @@ private:
     uint32_t _commandBufferPreBackBuffer = 0;
     std::vector<CommandBuffersPreFrame> _frameCommandBuffers;
 };
+
+inline RuntimeStatic<CommandBufferRing> gCommandBufferRing;
 
 }    // namespace vkgfx

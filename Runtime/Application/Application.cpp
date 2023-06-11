@@ -1,10 +1,12 @@
 #include "Application.h"
 #include "Foundation/Logger.h"
 #include "VulkanRenderer/Device.h"
-
+#include "VulkanRenderer/CommandBufferRing.h"
+#include "VulkanRenderer/DxcModule.h"
+#include "VulkanRenderer/SwapChain.h"
+#include "Utils/AssetProjectSetting.h"
 #include <imgui.h>
 
-#include "VulkanRenderer/SwapChain.h"
 
 Application::Application() {
 
@@ -13,12 +15,16 @@ Application::Application() {
 void Application::Startup() {
 	gLogger->Initialize();
 	gLogger->StartLogging();
+	gAssetProjectSetting->Initialize();
+	vkgfx::gDxcModule->Initialize();
 
 	SetupGlfw();
 	SetupVulkan();
 }
 
 void Application::Cleanup() {
+	vkgfx::gDxcModule->Destroy();
+	gAssetProjectSetting->Destroy();
 	gLogger->Destroy();
 
 	DestroyVulkan();
@@ -61,13 +67,16 @@ void Application::SetupVulkan() {
 	    Exception::Throw("GLFW Vulkan Not Supported");
 	}
 
-	constexpr size_t kNumBackBuffer = 3;
+	constexpr size_t kNumBackBuffer = 2;
+	constexpr size_t kNumCommandBufferPreFrame = 3;
 	vkgfx::gDevice->OnCreate("VulkanAPP", "Vulkan", true, true, _pWindow);
 	vkgfx::gSwapChain->OnCreate(vkgfx::gDevice, kNumBackBuffer, _pWindow);
+	vkgfx::gCommandBufferRing->OnCreate(vkgfx::gDevice, kNumBackBuffer, kNumCommandBufferPreFrame);
 }
 
 void Application::DestroyVulkan() {
 	vkgfx::gDevice->GPUFlush();
+	vkgfx::gCommandBufferRing->OnDestroy();
 	vkgfx::gSwapChain->OnDestroy();
 	vkgfx::gDevice->OnDestroy();
 }

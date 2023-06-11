@@ -1,6 +1,7 @@
 #pragma once
 #include <cassert>
 #include <cstddef>
+#include <type_traits>
 #include "Foundation/NonCopyable.h"
 
 template<typename T>
