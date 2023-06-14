@@ -2,12 +2,15 @@
 #include <string>
 #include <vector>
 #include <Windows.h>
+#include <wrl/client.h>
+#include <dxcapi.h>
 #include "Foundation/NamespeceAlias.h"
+#include "Foundation/NonCopyable.h"
 
 namespace vkgfx {
 
 class DefineList;
-class ShaderCompiler {
+class ShaderCompiler : public NonCopyable {
 public:
 	enum class ShaderType {
 		kVS = 1,
@@ -17,11 +20,14 @@ public:
 		kPS = 5,
 		kCS = 6,
 	};
-	void Compile(const stdfs::path &path, std::string_view entryPoint, ShaderType type, const DefineList &defineList);
+	bool Compile(const stdfs::path &path, std::string_view entryPoint, ShaderType type, const DefineList &defineList);
+	auto GetErrorMessage() const -> const std::string &;
+	auto GetByteCodePtr() const -> void *;
+	auto GetByteCodeSize() const -> size_t;
 private:
 	HRESULT _result = 0;
 	std::string _errorMessage;
-	
+	Microsoft::WRL::ComPtr<IDxcBlob> _pByteCode = nullptr;
 };
 
 }
