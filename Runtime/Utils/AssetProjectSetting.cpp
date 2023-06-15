@@ -52,6 +52,13 @@ bool AssetProjectSetting::SerializeToFile() {
 }
 
 void AssetProjectSetting::RepairPath(stdfs::path &relativePath, stdfs::path &absolutePath) {
+    if (!relativePath.empty() && !relativePath.is_relative()) {
+	   relativePath =  relative(relativePath);
+    }
+    if (!absolutePath.empty() && !absolutePath.is_absolute()) {
+	    absolutePath = absolute(absolutePath);
+    }
+
     if (!relativePath.empty() && absolutePath.empty()) {
         absolutePath = stdfs::absolute(relativePath);
     } else if (relativePath.empty() && !absolutePath.empty()) {

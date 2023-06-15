@@ -1,11 +1,62 @@
 #include "ShaderCompiler.h"
 #include "DxcModule.h"
 #include "Foundation/Exception.h"
+#include "Foundation/StringConvert.h"
+#include "DefineList.h"
+#include "Foundation/PathUtils.h"
+#include "Utils/AssetProjectSetting.h"
+#include "DxcModule.h"
 
-bool vkgfx::ShaderCompiler::Compile(const stdfs::path &path,
-                                    std::string_view entryPoint,
-                                    ShaderType type,
-                                    const DefineList &defineList) {
+namespace vkgfx {
+
+class CustomIncludeHandler : public IDxcIncludeHandler {
+public:
+    HRESULT STDMETHODCALLTYPE LoadSource(_In_ LPCWSTR pFilename,
+        _COM_Outptr_result_maybenull_ IDxcBlob **ppIncludeSource) override {
+        using Microsoft::WRL::ComPtr;
+        ComPtr<IDxcBlobEncoding> pEncoding;
+
+        stdfs::path filePath(nstd::to_string(std::wstring(pFilename)));
+        stdfs::path assetAbsolutePath = gAssetProjectSetting->GetAssetAbsolutePath();
+        std::optional<stdfs::path> pRelativePath = nstd::ToRelativePath(assetAbsolutePath, filePath);
+        if (!pRelativePath) {
+            return S_FALSE;
+        }
+
+        filePath = assetAbsolutePath / pRelativePath.value();
+        std::wstring wFileName = nstd::to_wstring(filePath.string());
+        HRESULT hr = gDxcModule->GetUtils()->LoadFile(wFileName.c_str(), nullptr, pEncoding.GetAddressOf());
+        if (SUCCEEDED(hr)) {
+            *ppIncludeSource = pEncoding.Detach();
+            return S_OK;
+        }
+        return S_FALSE;
+    }
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject) override {
+        return E_NOINTERFACE;
+    }
+    ULONG STDMETHODCALLTYPE AddRef(void) override {
+        return 0;
+    }
+    ULONG STDMETHODCALLTYPE Release(void) override {
+        return 0;
+    }
+};
+
+bool ShaderCompiler::Compile(const stdfs::path &path,
+    std::string_view entryPoint,
+    ShaderType type,
+    const DefineList &defineList) {
+
+    std::wstring fileName = nstd::to_wstring(path.string());
+    CustomIncludeHandler includeHandler;
+    Microsoft::WRL::ComPtr<IDxcBlob> pSourceBlob;
+    _result = includeHandler.LoadSource(fileName.c_str(), pSourceBlob.GetAddressOf());
+    if (FAILED(_result)) {
+        _errorMessage = fmt::format("Can't open the file {}", path.string());
+        return false;
+    }
 
     std::wstring_view target;
     switch (type) {
@@ -29,24 +80,54 @@ bool vkgfx::ShaderCompiler::Compile(const stdfs::path &path,
         break;
     default:
         Exception::Throw("Error ShaderType");
-        break;  
+        break;
     }
 
-    std::wstring fileName;
-    std::to_wstring()
-    std::vector<LPCWSTR> arguments = {
-        
-    };
+    std::wstring entryPointStr = nstd::to_wstring(entryPoint);
+    std::vector<LPCWSTR> arguments = {fileName.c_str(), L"-E", entryPointStr.c_str(), L"-T", target.data(), L"-spirv"};
+
+    std::vector<std::wstring> macros;
+    for (auto &&[key, value] : defineList) {
+        std::string arg = fmt::format("-D{}={}", key, value);
+        macros.push_back(nstd::to_wstring(arg));
+        arguments.push_back(macros.back().c_str());
+    }
+
+    // Compile shader
+    DxcBuffer buffer{};
+    buffer.Encoding = DXC_CP_ACP;
+    buffer.Ptr = pSourceBlob->GetBufferPointer();
+    buffer.Size = pSourceBlob->GetBufferSize();
+
+    Microsoft::WRL::ComPtr<IDxcResult> pCompileResult;
+    _result = gDxcModule->GetCompiler3()->Compile(&buffer,
+        arguments.data(),
+        static_cast<uint32_t>(arguments.size()),
+        &includeHandler,
+        IID_PPV_ARGS(&pCompileResult));
+
+    if (FAILED(_result) && pCompileResult == nullptr) {
+        pCompileResult->GetStatus(&_result);
+        Microsoft::WRL::ComPtr<IDxcBlobEncoding> pErrorBlob;
+        _result = pCompileResult->GetErrorBuffer(&pErrorBlob);
+        _errorMessage = static_cast<const char *>(pErrorBlob->GetBufferPointer());
+        return false;
+    }
+
+    pCompileResult->GetResult(_pByteCode.GetAddressOf());
+    return true;
 }
 
-auto vkgfx::ShaderCompiler::GetErrorMessage() const -> const std::string & {
+auto ShaderCompiler::GetErrorMessage() const -> const std::string & {
     return _errorMessage;
 }
 
-auto vkgfx::ShaderCompiler::GetByteCodePtr() const -> void * {
+auto ShaderCompiler::GetByteCodePtr() const -> void * {
     return (_pByteCode != nullptr) ? _pByteCode->GetBufferPointer() : nullptr;
 }
 
-auto vkgfx::ShaderCompiler::GetByteCodeSize() const -> size_t {
+auto ShaderCompiler::GetByteCodeSize() const -> size_t {
     return (_pByteCode != nullptr) ? _pByteCode->GetBufferSize() : 0;
 }
+
+}    // namespace vkgfx

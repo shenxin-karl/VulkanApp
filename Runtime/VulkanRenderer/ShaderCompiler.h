@@ -12,7 +12,7 @@ namespace vkgfx {
 class DefineList;
 class ShaderCompiler : public NonCopyable {
 public:
-	enum class ShaderType {
+	enum ShaderType {
 		kVS = 1,
 		kHS = 2,
 		kDS = 3,

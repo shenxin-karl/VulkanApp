@@ -3,7 +3,11 @@
 
 namespace nstd {
 
-std::wstring to_wstring(const std::string &string);
 std::string to_string(const std::wstring &string);
+std::string to_string(std::wstring_view string);
+
+std::wstring to_wstring(const std::string &string);
+std::wstring to_wstring(std::string_view string);
+	
 
 }

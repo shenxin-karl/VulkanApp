@@ -38,6 +38,8 @@ target("VulkanApp")
     add_defines("VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1")
     add_defines("VULKAN_HPP_NO_CONSTRUCTORS=1")
 
+    add_defines("_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING=1", "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS=1")
+
     -- dependent packages
     add_packages("fmt")
     add_packages("spdlog")
