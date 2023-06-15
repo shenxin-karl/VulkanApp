@@ -1,8 +1,6 @@
 #pragma once
 #include <stack>
 #include <json/value.h>
-#include "TransferBase.hpp"
-#include "TransferHelper.hpp"
 
 class TransferJsonWriter;
 
@@ -19,7 +17,7 @@ concept IsSTLContainer = IsStdVector<T>::value || IsStdList<T>::value || IsStdSe
 
 }    // namespace JsonWriteDetail
 
-class TransferJsonWriter : public TransferBase {
+class TransferJsonWriter : public TransferBase, public ITransferWriter {
 public:
     using TransferBase::TransferBase;
     void TransferVersion(std::string_view name, int version) final;
@@ -69,17 +67,8 @@ public:
         GetCurrentJsonValue()[name.data()] = TransferValue(data);
     }
 
-    template<InvokeTransferHelperWriteConcept T>
-    void Transfer(std::string_view name, T &data) {
-        TransferHelper<T>::Write(*this, name, data);
-    }
-
     bool BeginTransfer() final;
     bool EndTransfer() final;
-
-    bool IsRead() const final {
-        return false;
-    }
 private:
     template<typename T>
         requires(std::is_integral_v<T> || std::is_same_v<T, bool> || std::is_floating_point_v<T> ||

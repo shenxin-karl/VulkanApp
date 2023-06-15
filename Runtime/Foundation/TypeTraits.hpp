@@ -112,3 +112,6 @@ struct GetStdMapPair<std::unordered_multimap<Key, Value, Args...>> {
 	using ValueType = Value;
 	using PairType = typename std::unordered_multimap<Key, Value, Args...>::value_type;
 };
+
+template<typename T>
+concept Enumerable = std::is_enum_v<T>;

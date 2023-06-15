@@ -1,8 +1,6 @@
-#include "TransferJsonWriter.h"
+#include "Serialize/Transfer.hpp"
 #include "Foundation/Exception.h"
 #include <fstream>
-#include <json/writer.h>
-
 
 void TransferJsonWriter::TransferVersion(std::string_view name, int version) {
 	TransferBase::TransferVersion(name, version);

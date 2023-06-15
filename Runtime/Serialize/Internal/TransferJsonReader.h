@@ -1,9 +1,5 @@
 #pragma once
 #include <json/json.h>
-#include "TransferBase.hpp"
-#include "Foundation/Exception.h"
-#include "Foundation/TypeTraits.hpp"
-#include "TransferHelper.hpp"
 
 namespace JsonReaderDetail {
 
@@ -31,7 +27,7 @@ concept InvokeObjectTransfer = requires(T a) {
 
 }    // namespace JsonReaderDetail
 
-class TransferJsonReader : public TransferBase {
+class TransferJsonReader : public TransferBase, public ITransferReader {
 public:
     using TransferBase::TransferBase;
     void TransferVersion(std::string_view name, int version) final;
@@ -77,11 +73,6 @@ public:
         TransferValueWithName(name, data);
     }
 
-    template<InvokeTransferHelperReadConcept T>
-    void Transfer(std::string_view name, T &data) {
-        TransferHelper<T>::Read(*this, name, data);
-    }
-
     bool BeginTransfer() final;
     bool EndTransfer() final;
 
@@ -93,10 +84,6 @@ public:
         }
         TransferValue(data);
         PopJsonValue();
-    }
-
-    bool IsRead() const final {
-        return true;
     }
 
     void PushJsonValue(Json::Value &value);

@@ -1,6 +1,6 @@
 #pragma once
 #include <uuid.h>
-#include "Serializer/TransferBase.hpp"
+#include "Serialize/Transfer.hpp"
 
 class UUID128 : public uuids::uuid {
     DECLARE_SERIALIZER(UUID128)

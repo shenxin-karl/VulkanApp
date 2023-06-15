@@ -8,6 +8,18 @@
 template<typename T>
 struct TransferHelper;
 
+struct ITransferWriter {
+    consteval static bool IsReading() {
+        return false;
+    }
+};
+
+struct ITransferReader {
+    constexpr static bool IsReading() {
+        return true;
+    }
+};
+
 class TransferBase : public NonCopyable {
 public:
     TransferBase(const stdfs::path &path) : _sourceFilePath(path) {
@@ -38,12 +50,10 @@ public:
 
     virtual bool BeginTransfer() = 0;
     virtual bool EndTransfer() {
-	    _currentVersion = 0;
+        _currentVersion = 0;
         _versionMap.clear();
         return true;
     }
-
-    virtual bool IsRead() const = 0;
 
     void SetVersion(std::string_view name, int version) {
         _versionMap[std::string(name)] = version;
@@ -68,20 +78,41 @@ class TransferJsonReader;
 class TransferJsonWriter;
 
 #define DECLARE_SERIALIZER(Type)                                                                                       \
+private:                                                                                                               \
+    template<TransferContextConcept T>                                                                                 \
+    void TransferImpl(T &transfer);                                                                                    \
 public:                                                                                                                \
     template<TransferContextConcept T>                                                                                 \
-    void Transfer(T &transfer);
+    void Transfer(T &transfer) {                                                                                       \
+        TransferImpl(transfer);                                                                                        \
+    }
 
 #define IMPLEMENT_SERIALIZER(Type)                                                                                     \
-    template void Type::Transfer<TransferJsonWriter>(TransferJsonWriter & transfer);                                   \
-    template void Type::Transfer<TransferJsonReader>(TransferJsonReader & transfer);
+    template void Type::TransferImpl<TransferJsonWriter>(TransferJsonWriter & transfer);                               \
+    template void Type::TransferImpl<TransferJsonReader>(TransferJsonReader & transfer);
 
-#define TRANSFER(obj) transfer.Transfer(#obj, this->obj);
+#define DECLARE_VIRTUAL_SERIALIZER(Type)                                                                               \
+public:                                                                                                                \
+    template<TransferContextConcept T>                                                                                 \
+    void TransferImpl(T &transfer);                                                                                    \
+    virtual void Transfer(TransferJsonWriter &transfer);                                                               \
+    virtual void Transfer(TransferJsonReader &transfer);
+
+#define IMPLEMENT_VIRTUAL_SERIALIZER(Type)                                                                             \
+    void Type::Transfer(TransferJsonWriter &transfer) {                                                                \
+        Type::TransferImpl(transfer);                                                                                  \
+    }                                                                                                                  \
+    void Type::Transfer(TransferJsonReader &transfer) {                                                                \
+        Type::TransferImpl(transfer);                                                                                  \
+    }
+
+#define TRANSFER(field) TransferHelper<decltype(this->field)>::Transfer(transfer, #field, this->field)
+#define TRANSFER_WITH_NAME(field, name) TransferHelper<decltype(this->field)>::Transfer(transfer, name, this->field)
 
 template<TransferContextConcept Transfer, typename T>
 bool Serialize(Transfer &transfer, T &object) {
     if (!transfer.BeginTransfer()) {
-	    return false;
+        return false;
     }
     object.Transfer(transfer);
     return transfer.EndTransfer();

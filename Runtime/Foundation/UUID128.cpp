@@ -1,29 +1,28 @@
 #include "UUID128.h"
-#include "Serializer/TransferJsonReader.h"
-#include "Serializer/TransferJsonWriter.h"
-#include "Serializer/TransferHelper.hpp"
 
 IMPLEMENT_SERIALIZER(UUID128)
 
 template<>
 struct TransferHelper<uuids::uuid> {
-	static void Read(TransferBase &transfer, std::string_view name, uuids::uuid &data) {
-        std::string string;
-        transfer.Transfer(name, string);
-        std::optional<uuids::uuid> pID = uuids::uuid::from_string(string);
-        if (pID != std::nullopt) {
-	        data = *pID;
-        }
-    }
-    static void Write(TransferBase &transfer, std::string_view name, uuids::uuid &data) {
-        std::string string = uuids::to_string(data);
-        transfer.Transfer(name, string);
-    }
+	template<TransferContextConcept Transfer>
+    static void Transfer(Transfer &transfer, std::string_view name, uuids::uuid &data) {
+		if constexpr (transfer.IsReading()) {
+			std::string string;
+	        transfer.Transfer(name, string);
+	        std::optional<uuids::uuid> pID = uuids::uuid::from_string(string);
+	        if (pID != std::nullopt) {
+		        data = *pID;
+	        }
+		} else {
+			std::string string = uuids::to_string(data);
+			transfer.Transfer(name, string);
+		}
+	}
 };
 
 template<TransferContextConcept T>
-void UUID128::Transfer(T &transfer) {
-    transfer.Transfer("data", static_cast<uuid &>(*this));
+void UUID128::TransferImpl(T &transfer) {
+	TransferHelper<uuid>::Transfer(transfer, "data", static_cast<uuid &>(*this));
 }
 
 auto UUID128::New() -> UUID128 {

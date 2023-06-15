@@ -1,11 +1,10 @@
 #include "AssetProjectSetting.h"
-#include "Serializer/TransferJsonReader.h"
-#include "Serializer/TransferJsonWriter.h"
+#include "Foundation/Exception.h"
 
 IMPLEMENT_SERIALIZER(AssetProjectSetting)
 
 template<TransferContextConcept T>
-void AssetProjectSetting::Transfer(T &transfer) {
+void AssetProjectSetting::TransferImpl(T &transfer) {
     TRANSFER(_assetRelativePath);
     TRANSFER(_assetAbsolutePath);
     TRANSFER(_assetCacheRelativePath);

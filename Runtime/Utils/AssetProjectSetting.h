@@ -3,7 +3,7 @@
 #include "Foundation/NonCopyable.h"
 #include "Foundation/RuntimeStatic.h"
 #include "Foundation/TypeBase.hpp"
-#include "Serializer/TransferBase.hpp"
+#include "Serialize/Transfer.hpp"
 
 class AssetProjectSetting : public TypeBase {
     DECLARE_CLASS(AssetProjectSetting)
