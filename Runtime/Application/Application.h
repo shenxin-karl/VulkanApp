@@ -21,6 +21,7 @@ public:
     void SetupVulkan();
     void DestroyVulkan();
     static void GlfwErrorCallback(int error, const char *description);
+    void Loading();
 private:
     bool _isDone = false;
     GLFWwindow *_pWindow = nullptr;

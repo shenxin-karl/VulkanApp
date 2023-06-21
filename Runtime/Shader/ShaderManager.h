@@ -25,9 +25,9 @@ public:
     auto GetShaderDependency(stdfs::path path) -> ShaderDependency &;
 private:
     auto LoadFromCache(UUID128 uuid, const stdfs::path &sourcePath, const stdfs::path &cachePath) -> vk::ShaderModule;
-    //auto LoadByByteCode(UUID128 uuid)
+    auto LoadFromByteCode(UUID128 uuid, std::span<const char> byteCode) -> vk::ShaderModule;
     using ShaderModuleMap = std::unordered_map<UUID128, vk::ShaderModule>;
-    using ShaderByteCodeMap = std::unordered_map<UUID128, std::vector<uint8_t>>;
+    using ShaderByteCodeMap = std::unordered_map<UUID128, std::vector<char>>;
     using ShaderDependencyMap = std::unordered_map<stdfs::path, std::unique_ptr<ShaderDependency>>;
 private:
     ShaderModuleMap _shaderModuleMap;

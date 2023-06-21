@@ -106,16 +106,20 @@ bool ShaderCompiler::Compile(const stdfs::path &path,
         &includeHandler,
         IID_PPV_ARGS(&pCompileResult));
 
-    if (FAILED(_result) && pCompileResult == nullptr) {
-        pCompileResult->GetStatus(&_result);
-        Microsoft::WRL::ComPtr<IDxcBlobEncoding> pErrorBlob;
-        _result = pCompileResult->GetErrorBuffer(&pErrorBlob);
-        _errorMessage = static_cast<const char *>(pErrorBlob->GetBufferPointer());
-        return false;
+    if (pCompileResult == nullptr) {
+	    return false;
     }
 
-    pCompileResult->GetResult(_pByteCode.GetAddressOf());
-    return true;
+    pCompileResult->GetStatus(&_result);
+    if (FAILED(_result)) {
+	    Microsoft::WRL::ComPtr<IDxcBlobEncoding> pErrorBlob;
+	    _result = pCompileResult->GetErrorBuffer(&pErrorBlob);
+	    _errorMessage = static_cast<const char *>(pErrorBlob->GetBufferPointer());
+	    return false;
+    }
+
+    _result = pCompileResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&_pByteCode), nullptr);
+    return SUCCEEDED(_result);
 }
 
 auto ShaderCompiler::GetErrorMessage() const -> const std::string & {
@@ -123,11 +127,14 @@ auto ShaderCompiler::GetErrorMessage() const -> const std::string & {
 }
 
 auto ShaderCompiler::GetByteCodePtr() const -> void * {
-    return (_pByteCode != nullptr) ? _pByteCode->GetBufferPointer() : nullptr;
+    if (_pByteCode != nullptr)
+        return _pByteCode->GetBufferPointer();
+    return nullptr;
 }
 
 auto ShaderCompiler::GetByteCodeSize() const -> size_t {
-    return (_pByteCode != nullptr) ? _pByteCode->GetBufferSize() : 0;
+    if (_pByteCode != nullptr)
+        return _pByteCode->GetBufferSize();
+    return 0;
 }
-
 }    // namespace vkgfx

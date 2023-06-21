@@ -13,11 +13,11 @@
 #include <magic_enum.hpp>
 
 #if defined(MODE_DEBUG)
-static std::string_view sShaderCacheDirectory = "Debug";
+static std::string_view sShaderCacheDirectory = "Shader/Debug";
 #elif defined(MODE_RELEASE)
-static std::string_view sShaderCacheDirectory = "Release";
+static std::string_view sShaderCacheDirectory = "Shader/Release";
 #elif defined(MODE_RELWITHDEBINFO)
-static std::string_view sShaderCacheDirectory = "RelWithDebInfo";
+static std::string_view sShaderCacheDirectory = "Shader/RelWithDebInfo";
 #endif
 
 ShaderManager::ShaderManager() {
@@ -27,12 +27,19 @@ ShaderManager::~ShaderManager() {
 }
 
 void ShaderManager::Initialize() {
+    stdfs::path shaderCacheDir = gAssetProjectSetting->GetAssetCacheAbsolutePath() / sShaderCacheDirectory;
+    if (!stdfs::exists(shaderCacheDir)) {
+        stdfs::create_directories(shaderCacheDir);
+    }
+    Exception::CondThrow(stdfs::is_directory(shaderCacheDir),
+        "The cache path {} is occupied. Procedure",
+        shaderCacheDir.string());
 }
 
 void ShaderManager::Destroy() {
     vk::Device device = vkgfx::gDevice->GetVKDevice();
     for (auto &shaderModule : _shaderModuleMap | std::views::values) {
-	    device.destroyShaderModule(shaderModule);
+        device.destroyShaderModule(shaderModule);
     }
     _shaderModuleMap.clear();
 }
@@ -54,23 +61,37 @@ auto ShaderManager::Load(stdfs::path path,
 
     UUID128 uuid = UUID128::New(keyString);
     if (auto iter = _shaderModuleMap.find(uuid); iter != _shaderModuleMap.end()) {
-	    return iter->second;
+        return iter->second;
     }
 
     std::string cacheFileName = fmt::format("{}.spir", uuid.ToString());
-    stdfs::path shaderCachePath = gAssetProjectSetting->GetAssetCacheAbsolutePath() / sShaderCacheDirectory / cacheFileName;
+    stdfs::path shaderCachePath = gAssetProjectSetting->GetAssetCacheAbsolutePath() / sShaderCacheDirectory /
+                                  cacheFileName;
     if (vk::ShaderModule shaderModule = LoadFromCache(uuid, path, shaderCachePath)) {
-	    return shaderModule;
+        return shaderModule;
     }
 
-	vkgfx::ShaderCompiler shaderCompiler;
+    vkgfx::ShaderCompiler shaderCompiler;
     if (!shaderCompiler.Compile(path, entryPoint, type, defineList)) {
-        Logger::Warning("Compile shader {} error: the error message: {}", path.string(), shaderCompiler.GetErrorMessage());
-	    DEBUG_BREAK;
+        Logger::Warning("Compile shader {} error: the error message: {}",
+            path.string(),
+            shaderCompiler.GetErrorMessage());
+        DEBUG_BREAK;
         return nullptr;
     }
 
+    std::ofstream fileOutput(shaderCachePath, std::ios::binary);
+    Exception::CondThrow(fileOutput.is_open(), "Can't write shader cache {}!", path.string());
+    fileOutput.write(static_cast<const char *>(shaderCompiler.GetByteCodePtr()), shaderCompiler.GetByteCodeSize());
+    fileOutput.close();
 
+    std::vector<char> byteCode;
+    byteCode.resize(shaderCompiler.GetByteCodeSize(), 0);
+    std::memcpy(byteCode.data(), shaderCompiler.GetByteCodePtr(), shaderCompiler.GetByteCodeSize());
+
+    vk::ShaderModule shaderModule = LoadFromByteCode(uuid, byteCode);
+    _shaderByteCodeMap[uuid] = std::move(byteCode);
+    return shaderModule;
 }
 
 auto ShaderManager::GetShaderDependency(stdfs::path path) -> ShaderDependency & {
@@ -88,26 +109,37 @@ auto ShaderManager::GetShaderDependency(stdfs::path path) -> ShaderDependency & 
     return *iter->second;
 }
 
-auto ShaderManager::LoadFromCache(UUID128 uuid, const stdfs::path &sourcePath, const stdfs::path &cachePath) -> vk::ShaderModule {
+auto ShaderManager::LoadFromCache(UUID128 uuid, const stdfs::path &sourcePath, const stdfs::path &cachePath)
+    -> vk::ShaderModule {
+
+    if (!stdfs::exists(cachePath)) {
+	    return nullptr;
+    }
+
     vk::ShaderModule shaderModule = nullptr;
     stdfs::file_time_type cacheLastWriteTime = stdfs::last_write_time(cachePath);
     ShaderDependency &dependency = GetShaderDependency(sourcePath);
     if (dependency.GetLastWriteTime() <= cacheLastWriteTime) {
         std::ifstream fin(cachePath, std::ios::binary);
         fin.seekg(0, SEEK_END);
-        auto fileSize  = fin.tellg();
+        auto fileSize = fin.tellg();
         fin.seekg(0, SEEK_SET);
-        std::vector<uint8_t> spirData;
-        spirData.resize(fileSize, 0);
-        fin.readsome(reinterpret_cast<char*>(spirData.data()), fileSize);
-
-        vk::Device device = vkgfx::gDevice->GetVKDevice();
-        vk::ShaderModuleCreateInfo shaderModuleCreateInfo;
-        shaderModuleCreateInfo.codeSize = spirData.size() / sizeof(uint32_t);
-        shaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(spirData.data());
-		shaderModule = device.createShaderModule(shaderModuleCreateInfo);
-        _shaderModuleMap[uuid] = shaderModule;
-        _shaderByteCodeMap[uuid] = std::move(spirData);
+        std::vector<char> byteCode;
+        byteCode.resize(fileSize / sizeof(uint32_t), 0);
+        fin.readsome(byteCode.data(), fileSize);
+        shaderModule = LoadFromByteCode(uuid, byteCode);
+        _shaderByteCodeMap[uuid] = std::move(byteCode);
     }
+    return shaderModule;
+}
+
+auto ShaderManager::LoadFromByteCode(UUID128 uuid, std::span<const char> byteCode) -> vk::ShaderModule {
+    vk::ShaderModule shaderModule = nullptr;
+    vk::Device device = vkgfx::gDevice->GetVKDevice();
+    vk::ShaderModuleCreateInfo shaderModuleCreateInfo;
+    shaderModuleCreateInfo.codeSize = byteCode.size();
+    shaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t *>(byteCode.data());
+    shaderModule = device.createShaderModule(shaderModuleCreateInfo);
+    _shaderModuleMap[uuid] = shaderModule;
     return shaderModule;
 }

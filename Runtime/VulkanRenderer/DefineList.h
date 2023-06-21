@@ -15,6 +15,7 @@ public:
     using iterator = std::vector<MacroItem>::iterator;
     using const_iterator = std::vector<MacroItem>::const_iterator;
 public:
+    DefineList() = default;
     void Set(std::string_view key, int value = 1);
     auto Get(std::string_view key) const -> std::optional<int>;
     bool Remove(std::string_view key);
