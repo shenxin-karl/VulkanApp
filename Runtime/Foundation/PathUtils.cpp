@@ -7,8 +7,12 @@ bool IsSubPath(stdfs::path mainPath, stdfs::path subPath) {
 		return false;
 	}
 
-	mainPath = stdfs::absolute(mainPath.lexically_normal());
-	subPath = stdfs::absolute(subPath.lexically_normal());
+	if (!mainPath.is_absolute()) {
+		mainPath = stdfs::absolute(mainPath.lexically_normal());
+	}
+	if (!subPath.is_absolute()) {
+		subPath = stdfs::absolute(subPath.lexically_normal());
+	}
 	if (mainPath == subPath) {
 		return true;
 	}

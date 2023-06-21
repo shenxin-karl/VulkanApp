@@ -90,8 +90,6 @@ void Application::GlfwErrorCallback(int error, const char *description) {
 }
 
 void Application::Loading() {
-    vk::ShaderModule vkShader = gShaderManager->Load("Assets/Shaders/Triangles.hlsl",
-        "VSMain",
-        vkgfx::ShaderType::kVS,
-        {});
+    ShaderLoadInfo loadInfo = {"Assets/Shaders/Triangles.hlsl", "VSMain", vkgfx::ShaderType::kVS, {}};
+    vk::ShaderModule vkShader = gShaderManager->LoadShaderModule(loadInfo);
 }

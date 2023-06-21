@@ -12,6 +12,9 @@
 #include <fmt/format.h>
 #include <magic_enum.hpp>
 
+#include "Foundation/PathUtils.h"
+#include "VulkanRenderer/ExtDebugUtils.h"
+
 #if defined(MODE_DEBUG)
 static std::string_view sShaderCacheDirectory = "Shader/Debug";
 #elif defined(MODE_RELEASE)
@@ -44,20 +47,20 @@ void ShaderManager::Destroy() {
     _shaderModuleMap.clear();
 }
 
-auto ShaderManager::Load(stdfs::path path,
-    std::string_view entryPoint,
-    vkgfx::ShaderType type,
-    const vkgfx::DefineList &defineList) -> vk::ShaderModule {
-
-    if (!path.is_absolute()) {
-        path = stdfs::absolute(path);
+auto ShaderManager::LoadShaderModule(const ShaderLoadInfo &loadInfo) -> vk::ShaderModule {
+    stdfs::path sourcePath = sourcePath;
+    if (!sourcePath.is_absolute()) {
+        sourcePath = stdfs::absolute(sourcePath);
     }
 
+    Exception::CondThrow(nstd::IsSubPath(gAssetProjectSetting->GetAssetAbsolutePath(), sourcePath),
+        "Only shaders under the Asset path can be loaded");
+
     std::string keyString = fmt::format("{}_{}_{}_{}",
-        path.string(),
-        entryPoint.data(),
-        magic_enum::enum_name(type).data(),
-        defineList.ToString());
+        sourcePath.string(),
+        loadInfo.entryPoint.data(),
+        magic_enum::enum_name(loadInfo.shaderType).data(),
+        loadInfo.defineList.ToString());
 
     UUID128 uuid = UUID128::New(keyString);
     if (auto iter = _shaderModuleMap.find(uuid); iter != _shaderModuleMap.end()) {
@@ -67,21 +70,20 @@ auto ShaderManager::Load(stdfs::path path,
     std::string cacheFileName = fmt::format("{}.spir", uuid.ToString());
     stdfs::path shaderCachePath = gAssetProjectSetting->GetAssetCacheAbsolutePath() / sShaderCacheDirectory /
                                   cacheFileName;
-    if (vk::ShaderModule shaderModule = LoadFromCache(uuid, path, shaderCachePath)) {
+    if (vk::ShaderModule shaderModule = LoadFromCache(uuid, sourcePath, shaderCachePath)) {
         return shaderModule;
     }
 
     vkgfx::ShaderCompiler shaderCompiler;
-    if (!shaderCompiler.Compile(path, entryPoint, type, defineList)) {
+    if (!shaderCompiler.Compile(sourcePath, loadInfo.entryPoint, loadInfo.shaderType, loadInfo.defineList)) {
         Logger::Warning("Compile shader {} error: the error message: {}",
-            path.string(),
+            sourcePath.string(),
             shaderCompiler.GetErrorMessage());
         DEBUG_BREAK;
         return nullptr;
     }
 
     std::ofstream fileOutput(shaderCachePath, std::ios::binary);
-    Exception::CondThrow(fileOutput.is_open(), "Can't write shader cache {}!", path.string());
     fileOutput.write(static_cast<const char *>(shaderCompiler.GetByteCodePtr()), shaderCompiler.GetByteCodeSize());
     fileOutput.close();
 
@@ -90,6 +92,10 @@ auto ShaderManager::Load(stdfs::path path,
     std::memcpy(byteCode.data(), shaderCompiler.GetByteCodePtr(), shaderCompiler.GetByteCodeSize());
 
     vk::ShaderModule shaderModule = LoadFromByteCode(uuid, byteCode);
+    if (shaderModule) {
+        vkgfx::SetResourceName(vkgfx::gDevice->GetVKDevice(), shaderModule, keyString);
+    }
+
     _shaderByteCodeMap[uuid] = std::move(byteCode);
     return shaderModule;
 }
@@ -107,6 +113,40 @@ auto ShaderManager::GetShaderDependency(stdfs::path path) -> ShaderDependency & 
     auto item = std::make_pair(path, std::make_unique<ShaderDependency>(path));
     iter = _shaderDependencyMap.emplace_hint(iter, std::move(item));
     return *iter->second;
+}
+
+bool ShaderManager::LoadShaderStageCreateInfo(const ShaderLoadInfo &loadInfo,
+    vk::PipelineShaderStageCreateInfo &outputCreateInfo) {
+
+    if (vk::ShaderModule shaderModule = LoadShaderModule(loadInfo)) {
+        outputCreateInfo = vk::PipelineShaderStageCreateInfo{};
+        outputCreateInfo.module = shaderModule;
+        outputCreateInfo.pName = loadInfo.entryPoint.data();
+        switch (loadInfo.shaderType) {
+        case vkgfx::ShaderType::kVS:
+            outputCreateInfo.stage = vk::ShaderStageFlagBits::eVertex;
+            break;
+        case vkgfx::ShaderType::kHS:
+            outputCreateInfo.stage = vk::ShaderStageFlagBits::eTessellationControl;
+            break;
+        case vkgfx::ShaderType::kDS:
+            outputCreateInfo.stage = vk::ShaderStageFlagBits::eTessellationEvaluation;
+            break;
+        case vkgfx::ShaderType::kGS:
+            outputCreateInfo.stage = vk::ShaderStageFlagBits::eGeometry;
+            break;
+        case vkgfx::ShaderType::kPS:
+            outputCreateInfo.stage = vk::ShaderStageFlagBits::eFragment;
+            break;
+        case vkgfx::ShaderType::kCS:
+            outputCreateInfo.stage = vk::ShaderStageFlagBits::eCompute;
+            break;
+        default:
+            Exception::Throw("Invalid ShaderType {}", magic_enum::enum_name(loadInfo.shaderType).data());
+        }
+        return true;
+    }
+    return false;
 }
 
 auto ShaderManager::LoadFromCache(UUID128 uuid, const stdfs::path &sourcePath, const stdfs::path &cachePath)

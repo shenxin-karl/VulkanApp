@@ -11,6 +11,13 @@ namespace vkgfx {
 class DefineList;
 }
 
+struct ShaderLoadInfo {
+	const stdfs::path &sourcePath;
+    std::string_view entryPoint;
+    vkgfx::ShaderType shaderType;
+    const vkgfx::DefineList &defineList;
+};
+
 class ShaderDependency;
 class ShaderManager : public NonCopyable {
 public:
@@ -18,11 +25,9 @@ public:
     ~ShaderManager();
     void Initialize();
     void Destroy();
-    auto Load(stdfs::path path,
-        std::string_view entryPoint,
-        vkgfx::ShaderType type,
-        const vkgfx::DefineList &defineList) -> vk::ShaderModule;
+    auto LoadShaderModule(ShaderLoadInfo loadInfo) -> vk::ShaderModule;
     auto GetShaderDependency(stdfs::path path) -> ShaderDependency &;
+    bool LoadShaderStageCreateInfo(const ShaderLoadInfo &loadInfo, vk::PipelineShaderStageCreateInfo &outputCreateInfo);
 private:
     auto LoadFromCache(UUID128 uuid, const stdfs::path &sourcePath, const stdfs::path &cachePath) -> vk::ShaderModule;
     auto LoadFromByteCode(UUID128 uuid, std::span<const char> byteCode) -> vk::ShaderModule;
