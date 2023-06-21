@@ -25,6 +25,19 @@ void UUID128::TransferImpl(T &transfer) {
 	TransferHelper<uuid>::Transfer(transfer, "data", static_cast<uuid &>(*this));
 }
 
+auto UUID128::ToString() const -> std::string {
+	return uuids::to_string(*this);
+}
+
+bool UUID128::FromString(std::string_view string) {
+	std::optional<uuid> pResult = from_string(string);
+	if (!pResult.has_value()) {
+		return false;
+	}
+	*this = UUID128(pResult.value());
+	return true;
+}
+
 auto UUID128::New() -> UUID128 {
     return GetRandomGenerator()();
 }

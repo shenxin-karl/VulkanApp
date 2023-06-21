@@ -4,42 +4,42 @@
 #ifdef __IOS__
 //todo ::
 #elif __ANDROID__
-//android define
-#define inline_0 __attribute__((unused, noinline))
-#define inline_1 __attribute__((unused)) inline
-#define inline_2 __attribute__((unused, always_inline)) inline
-#define inline_3
-#define DLL_Export __attribute((visibility("default")))
-#define DLL_Import
-#define AlignPrefix(length)
-#define AlignSuffix(length) __attribute__((aligned(length)))
-#define stdcall
+    //android define
+    #define inline_0 __attribute__((unused, noinline))
+    #define inline_1 __attribute__((unused)) inline
+    #define inline_2 __attribute__((unused, always_inline)) inline
+    #define inline_3
+    #define DLL_Export __attribute((visibility("default")))
+    #define DLL_Import
+    #define AlignPrefix(length)
+    #define AlignSuffix(length) __attribute__((aligned(length)))
+    #define stdcall
 #elif __GNUC__
-#define MIN_GCC_VERSION 40100
-#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
-#define inline_0 __attribute__((unused, noinline))
-#define inline_1 __attribute__((unused)) inline
-#if defined(__clang__) || defined(__APPLE_CC__) || defined(__APPLE_CPP__)
-#define inline_2 __attribute__((unused, always_inline, nodebug)) inline
-#else
-#define inline_2 __attribute__((unused, always_inline)) inline
-#endif
-#define inline_3
-#define DLL_Export __attribute((visibility("default")))
-#define DLL_Import
-#define AlignPrefix(length)
-#define AlignSuffix(length) __attribute__((aligned(length)))
-#define stdcall
+    #define MIN_GCC_VERSION 40100
+    #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+    #define inline_0 __attribute__((unused, noinline))
+    #define inline_1 __attribute__((unused)) inline
+    #if defined(__clang__) || defined(__APPLE_CC__) || defined(__APPLE_CPP__)
+        #define inline_2 __attribute__((unused, always_inline, nodebug)) inline
+    #else
+        #define inline_2 __attribute__((unused, always_inline)) inline
+    #endif
+    #define inline_3
+    #define DLL_Export __attribute((visibility("default")))
+    #define DLL_Import
+    #define AlignPrefix(length)
+    #define AlignSuffix(length) __attribute__((aligned(length)))
+    #define stdcall
 
 #else
-//windows define
-#define inline_0 __declspec(noinline)
-#define inline_1 inline
-#define inline_2 __forceinline
-#define inline_3
-#define DLL_Export __declspec(dllexport)
-#define DLL_Import __declspec(dllimport)
-#define stdcall _stdcall
+    //windows define
+    #define inline_0 __declspec(noinline)
+    #define inline_1 inline
+    #define inline_2 __forceinline
+    #define inline_3
+    #define DLL_Export __declspec(dllexport)
+    #define DLL_Import __declspec(dllimport)
+    #define stdcall _stdcall
 
 #endif
 
@@ -48,7 +48,7 @@
 
 // clang compiler define
 #else
-#define HAS_CLANG_FEATURE(x) (__has_feature(x))
+    #define HAS_CLANG_FEATURE(x) (__has_feature(x))
 #endif
 
 #define C_API_HEADER extern "C"
@@ -60,40 +60,40 @@
 #pragma region DEPRECATED
 
 #if defined(_MSC_VER)
-#define DEPRECATED(msg) __declspec(deprecated(msg))
-#define DEPRECATED_ENUM_VALUE(msg) /* no equivalent for this in MSVC */
+    #define DEPRECATED(msg) __declspec(deprecated(msg))
+    #define DEPRECATED_ENUM_VALUE(msg) /* no equivalent for this in MSVC */
 #elif defined(__clang__)
-#if __has_extension(attribute_deprecated_with_message)
-#define DEPRECATED(msg) __attribute__((deprecated(msg)))
-#else
-#define DEPRECATED(msg) __attribute__((deprecated))
-#endif
+    #if __has_extension(attribute_deprecated_with_message)
+        #define DEPRECATED(msg) __attribute__((deprecated(msg)))
+    #else
+        #define DEPRECATED(msg) __attribute__((deprecated))
+    #endif
 
-#if __has_extension(enumerator_attributes)
-#if __has_extension(attribute_deprecated_with_message)
-#define DEPRECATED_ENUM_VALUE(msg) __attribute__((deprecated(msg)))
-#else
-#define DEPRECATED_ENUM_VALUE(msg) __attribute__((deprecated))
-#endif
-#else
-#define DEPRECATED_ENUM_VALUE(msg)
-#endif
+    #if __has_extension(enumerator_attributes)
+        #if __has_extension(attribute_deprecated_with_message)
+            #define DEPRECATED_ENUM_VALUE(msg) __attribute__((deprecated(msg)))
+        #else
+            #define DEPRECATED_ENUM_VALUE(msg) __attribute__((deprecated))
+        #endif
+    #else
+        #define DEPRECATED_ENUM_VALUE(msg)
+    #endif
 #elif defined(__GNUC__)
-// Support for messages on the deprecated attribute arrived in GCC 4.5
-#if __GNUC__ >= 4 && __GNUC_MINOR__ >= 5
-#define DEPRECATED(msg) __attribute__((deprecated(msg)))
+    // Support for messages on the deprecated attribute arrived in GCC 4.5
+    #if __GNUC__ >= 4 && __GNUC_MINOR__ >= 5
+        #define DEPRECATED(msg) __attribute__((deprecated(msg)))
+    #else
+        #define DEPRECATED(msg) __attribute__((deprecated))
+    #endif
+    // Support for attributes on enumerators is GCC 6
+    #if __GNUC__ >= 6
+        #define DEPRECATED_ENUM_VALUE(msg) __attribute__((deprecated(msg)))
+    #else
+        #define DEPRECATED_ENUM_VALUE(msg)
+    #endif
 #else
-#define DEPRECATED(msg) __attribute__((deprecated))
-#endif
-// Support for attributes on enumerators is GCC 6
-#if __GNUC__ >= 6
-#define DEPRECATED_ENUM_VALUE(msg) __attribute__((deprecated(msg)))
-#else
-#define DEPRECATED_ENUM_VALUE(msg)
-#endif
-#else
-// TODO
-#define DEPRECATED(msg)
+    // TODO
+    #define DEPRECATED(msg)
 #endif
 
 #pragma endregion

@@ -5,6 +5,8 @@
 class UUID128 : public uuids::uuid {
     DECLARE_SERIALIZER(UUID128)
 public:
+    auto ToString() const -> std::string;
+    bool FromString(std::string_view string);
     static auto New() -> UUID128;
     static auto New(std::string_view name) -> UUID128;
     static auto New(std::wstring_view name) -> UUID128;
@@ -14,3 +16,10 @@ private:
     static auto GetNameGenerator() -> uuids::uuid_name_generator &;
     static auto GetRandomGenerator() -> uuids::uuid_random_generator &;
 };
+
+namespace std {
+
+template<>
+struct hash<UUID128> : public hash<uuids::uuid> {};
+
+}    // namespace std

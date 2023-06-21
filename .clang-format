@@ -202,3 +202,6 @@ AlwaysBreakAfterReturnType: None
 BreakBeforeBinaryOperators:    None
 PenaltyBreakAssignment: 10000
 PenaltyReturnTypeOnItsOwnLine: 1000
+
+# 宏条件缩进
+IndentPPDirectives: BeforeHash

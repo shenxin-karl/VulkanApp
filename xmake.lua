@@ -3,6 +3,14 @@ local RUNTIME_DIR = path.join(PROJECTION_DIR, "Runtime")
 local THIRD_PARTY_DIR = path.join(PROJECTION_DIR, "ThirdParty")
 local BINARY_DIR = path.join(PROJECTION_DIR, "Bin");
 
+if is_mode("debug") then
+    add_defines("MODE_DEBUG")
+elseif is_mode("release") then
+    add_defines("MODE_RELEASE")
+else 
+    add_defines("MODE_RELWITHDEBINFO")
+end
+
 set_toolset("cc", "clang-cl")
 set_toolset("cxx", "clang-cl")
 add_cxxflags("-std:c++20", { tools = { "clang-cl" }})
@@ -24,6 +32,7 @@ add_requires("vulkansdk")
 add_requires("vulkan-memory-allocator v3.0.1")
 add_requires("stduuid", {debug = isDebug})
 add_requires("jsoncpp 1.9.5", {debug = isDebug, configs = {shared = false}})
+add_requires("magic_enum v0.9.0")
 
 target("VulkanApp")
     set_languages("c++latest")
@@ -47,12 +56,14 @@ target("VulkanApp")
     add_packages("glfw")
     add_packages("vulkan-hpp")
     add_packages("vulkansdk")
+    add_packages("magic_enum")
+    add_packages("jsoncpp")
 
     add_defines("VMA_STATIC_VULKAN_FUNCTIONS=0", "VMA_DYNAMIC_VULKAN_FUNCTIONS=1")
     add_packages("vulkan-memory-allocator")
 
+    -- local packages
     add_packages("stduuid")
-    add_packages("jsoncpp")
 
     set_targetdir(BINARY_DIR)
 
