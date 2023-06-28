@@ -10,7 +10,7 @@
 #include <vulkan/vulkan_win32.h>
 
 #define VMA_IMPLEMENTATION
-#include <vma/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 
 #include "VKException.h"
 #include "Foundation/Logger.h"
@@ -77,6 +77,10 @@ void Device::OnDestroy() {
     ExtDebugReportOnDestroy(_instance);
     _instance.destroy();
     _instance = nullptr;
+}
+
+auto Device::GetInstance() const -> vk::Instance {
+    return _instance;
 }
 
 auto Device::GetVKDevice() const -> vk::Device {

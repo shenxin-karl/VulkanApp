@@ -18,11 +18,13 @@ public:
     auto GetNewCommandBuffer() -> vk::CommandBuffer;
     auto GetCommandPool() const -> vk::CommandPool;
     auto GetExecutedFinishedFence() const -> vk::Fence;
+    auto GetRenderFinishedSemaphore() const -> vk::Semaphore;
 private:
     struct CommandBuffersPreFrame {
         size_t currentAllocateIndex = 0;
         vk::CommandPool commandPool;
         vk::Fence executedFinishedFence;
+        vk::Semaphore renderFinishedSemaphore;
         std::vector<vk::CommandBuffer> commandBuffers;
     };
 private:

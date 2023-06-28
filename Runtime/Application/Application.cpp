@@ -8,6 +8,9 @@
 #include "Shader/ShaderManager.h"
 #include "VulkanRenderer/DefineList.h"
 #include <imgui.h>
+#include <glm/glm.hpp>
+
+#include "VulkanRenderer/Utils.hpp"
 
 Application::Application() {
 }
@@ -74,12 +77,14 @@ void Application::SetupVulkan() {
     constexpr size_t kNumBackBuffer = 2;
     constexpr size_t kNumCommandBufferPreFrame = 3;
     vkgfx::gDevice->OnCreate("VulkanAPP", "Vulkan", true, true, _pWindow);
-    vkgfx::gSwapChain->OnCreate(vkgfx::gDevice, kNumBackBuffer, _pWindow);
+    vkgfx::gSwapChain->OnCreate(vkgfx::gDevice, kNumBackBuffer);
     vkgfx::gCommandBufferRing->OnCreate(vkgfx::gDevice, kNumBackBuffer, kNumCommandBufferPreFrame);
+    vkgfx::gDevice->CreatePipelineCache();
 }
 
 void Application::DestroyVulkan() {
     vkgfx::gDevice->GPUFlush();
+    vkgfx::gDevice->DestroyPipelineCache();
     vkgfx::gCommandBufferRing->OnDestroy();
     vkgfx::gSwapChain->OnDestroy();
     vkgfx::gDevice->OnDestroy();
@@ -90,6 +95,103 @@ void Application::GlfwErrorCallback(int error, const char *description) {
 }
 
 void Application::Loading() {
+    vk::PipelineShaderStageCreateInfo vertexShaderStageInfo;
+    vk::PipelineShaderStageCreateInfo pixelShaderStageInfo;
+
+    vk::Device device = vkgfx::gDevice->GetVKDevice();
+
     ShaderLoadInfo loadInfo = {"Assets/Shaders/Triangles.hlsl", "VSMain", vkgfx::ShaderType::kVS, {}};
-    vk::ShaderModule vkShader = gShaderManager->LoadShaderModule(loadInfo);
+    gShaderManager->LoadShaderStageCreateInfo(loadInfo, vertexShaderStageInfo);
+
+    loadInfo.entryPoint = "PSMain";
+    loadInfo.shaderType = vkgfx::ShaderType::kPS;
+    gShaderManager->LoadShaderStageCreateInfo(loadInfo, pixelShaderStageInfo);
+
+    vk::PipelineShaderStageCreateInfo shaderStages[] = {vertexShaderStageInfo, pixelShaderStageInfo};
+
+
+    struct Vertex {
+	    glm::vec3 position;
+        glm::vec3 color;
+    };
+
+    vk::VertexInputBindingDescription bindingDescription;
+    bindingDescription.binding = 0;
+    bindingDescription.stride = sizeof(Vertex);
+    bindingDescription.inputRate = vk::VertexInputRate::eVertex;
+
+    vk::VertexInputAttributeDescription attributeDescription[2];
+    attributeDescription[0].location = 0;
+    attributeDescription[0].binding = 0;
+    attributeDescription[0].format = vk::Format::eR32G32B32Sfloat;
+    attributeDescription[0].offset = offsetof(Vertex, position);
+
+    attributeDescription[1].location = 1;
+    attributeDescription[1].binding = 0;
+    attributeDescription[1].format = vk::Format::eR32G32B32Sfloat;
+    attributeDescription[0].offset = offsetof(Vertex, color);
+
+    vk::PipelineVertexInputStateCreateInfo vertexInputCreateInfo;
+    vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
+    vertexInputCreateInfo.pVertexBindingDescriptions = nullptr;
+    vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputCreateInfo.pVertexAttributeDescriptions = nullptr;
+
+    vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo;
+    rasterizationStateCreateInfo.polygonMode = vk::PolygonMode::eFill;
+    rasterizationStateCreateInfo.cullMode = vk::CullModeFlagBits::eBack;
+    rasterizationStateCreateInfo.frontFace = vk::FrontFace::eClockwise;
+    rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
+    rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_TRUE;
+    rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
+    rasterizationStateCreateInfo.depthBiasConstantFactor = 0;
+    rasterizationStateCreateInfo.depthBiasClamp = 0;
+    rasterizationStateCreateInfo.depthBiasSlopeFactor = 0;
+    rasterizationStateCreateInfo.lineWidth = 1.0;
+
+    vk::PipelineColorBlendStateCreateInfo colorBlendCreateInfo;
+    colorBlendCreateInfo.logicOpEnable = VK_FALSE;
+    colorBlendCreateInfo.attachmentCount = 1;
+    colorBlendCreateInfo.pAttachments = vkgfx::GetColorBlendAttachmentState_Opaque();
+    colorBlendCreateInfo.blendConstants = std::array<float, 4>{0.f};
+
+    vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
+    pipelineLayoutCreateInfo.setLayoutCount = 0;
+	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+    _pipelineLayout = device.createPipelineLayout(pipelineLayoutCreateInfo);
+
+    vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
+    pipelineCreateInfo.stageCount = 2;
+    pipelineCreateInfo.pStages = shaderStages;
+    pipelineCreateInfo.pVertexInputState = &vertexInputCreateInfo;
+    pipelineCreateInfo.pInputAssemblyState = vkgfx::GetInputAssemblyState_TriangleList();
+    pipelineCreateInfo.pTessellationState = nullptr;
+    pipelineCreateInfo.pViewportState = vkgfx::GetViewportState<1, 1>();
+    pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
+    pipelineCreateInfo.pMultisampleState = vkgfx::GetMultiSampleState_Disable();
+    pipelineCreateInfo.pDepthStencilState = vkgfx::GetDepthStencilState_DepthStandard();
+    pipelineCreateInfo.pColorBlendState = &colorBlendCreateInfo;
+    pipelineCreateInfo.pDynamicState = vkgfx::GetDynamicState_ViewportScissor();
+    pipelineCreateInfo.layout = _pipelineLayout;
+    pipelineCreateInfo.renderPass = vkgfx::gSwapChain->GetRenderPass();
+    pipelineCreateInfo.basePipelineHandle = nullptr;
+    pipelineCreateInfo.basePipelineIndex = -1;
+    _graphicsPipeline = device.createGraphicsPipeline(nullptr, pipelineCreateInfo).value;
+
+    const std::vector<Vertex> vertices = {
+	    {{+0.0f, -0.5f, +0.f}, {1.0f, 0.0f, 0.0f}},
+	    {{+0.5f, +0.5f, +0.f}, {0.0f, 1.0f, 0.0f}},
+	    {{-0.5f, +0.5f, +0.f}, {0.0f, 0.0f, 1.0f}}
+    };
+
+
+    constexpr size_t k128MB = 128 * 1024 * 1024;
+    _uploadHeap.OnCreate(vkgfx::gDevice, k128MB);
+
+    size_t memoryAllocSize = sizeof(Vertex) * vertices.size();
+    _vertexBuffer.OnCreate(vkgfx::gDevice, memoryAllocSize, "Triangle Size");
+    _vertexBuffer.AllocBuffer(vertices);
+    _vertexBuffer.UploadData(_uploadHeap.GetCommandBuffer());
+    _vertexBuffer.FreeUploadHeap();
+    _uploadHeap.Flush();
 }

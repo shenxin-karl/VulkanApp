@@ -93,7 +93,7 @@ auto StaticBufferPool::AllocBuffer(size_t numElement, size_t stride, void **pDat
     return std::make_optional(info);
 }
 
-auto StaticBufferPool::AllocBuffer(size_t numElement, size_t stride, void *pInitData)
+auto StaticBufferPool::AllocBuffer(size_t numElement, size_t stride, const void *pInitData)
     -> std::optional<vk::DescriptorBufferInfo> {
 
     void *pBufferPtr = nullptr;

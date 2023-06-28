@@ -30,11 +30,14 @@ void CommandBufferRing::OnCreate(Device *pDevice,
     vk::FenceCreateInfo fenceCreateInfo;
     fenceCreateInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
+    vk::SemaphoreCreateInfo semaphoreCreateInfo;
+
     for (auto &frame : _frameCommandBuffers) {
         frame.commandPool = device.createCommandPool(commandPoolCreateInfo);
         cmdCreateInfo.commandPool = frame.commandPool;
         frame.commandBuffers = device.allocateCommandBuffers(cmdCreateInfo);
         frame.executedFinishedFence = device.createFence(fenceCreateInfo);
+        frame.renderFinishedSemaphore = device.createSemaphore(semaphoreCreateInfo);
     }
 
     SetIsCreate(true);
@@ -73,6 +76,10 @@ auto CommandBufferRing::GetCommandPool() const -> vk::CommandPool {
 
 auto CommandBufferRing::GetExecutedFinishedFence() const -> vk::Fence {
     return _frameCommandBuffers[_frameIndex].executedFinishedFence;
+}
+
+auto CommandBufferRing::GetRenderFinishedSemaphore() const -> vk::Semaphore {
+    return _frameCommandBuffers[_frameIndex].renderFinishedSemaphore;
 }
 
 }    // namespace vkgfx

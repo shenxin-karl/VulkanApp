@@ -47,7 +47,8 @@ public:
 bool ShaderCompiler::Compile(const stdfs::path &path,
     std::string_view entryPoint,
     ShaderType type,
-    const DefineList &defineList) {
+    const DefineList &defineList,
+    bool makeDebugInfo) {
 
     std::wstring fileName = nstd::to_wstring(path.string());
     CustomIncludeHandler includeHandler;
@@ -85,6 +86,10 @@ bool ShaderCompiler::Compile(const stdfs::path &path,
 
     std::wstring entryPointStr = nstd::to_wstring(entryPoint);
     std::vector<LPCWSTR> arguments = {fileName.c_str(), L"-E", entryPointStr.c_str(), L"-T", target.data(), L"-spirv"};
+
+	if (makeDebugInfo) {
+		arguments.push_back(L"-Zi");
+	}
 
     std::vector<std::wstring> macros;
     for (auto &&[key, value] : defineList) {

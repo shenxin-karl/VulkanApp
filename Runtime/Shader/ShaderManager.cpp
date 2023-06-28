@@ -48,7 +48,7 @@ void ShaderManager::Destroy() {
 }
 
 auto ShaderManager::LoadShaderModule(const ShaderLoadInfo &loadInfo) -> vk::ShaderModule {
-    stdfs::path sourcePath = sourcePath;
+    stdfs::path sourcePath = loadInfo.sourcePath;
     if (!sourcePath.is_absolute()) {
         sourcePath = stdfs::absolute(sourcePath);
     }
@@ -67,7 +67,7 @@ auto ShaderManager::LoadShaderModule(const ShaderLoadInfo &loadInfo) -> vk::Shad
         return iter->second;
     }
 
-    std::string cacheFileName = fmt::format("{}.spir", uuid.ToString());
+    std::string cacheFileName = fmt::format("{}.spr", uuid.ToString());
     stdfs::path shaderCachePath = gAssetProjectSetting->GetAssetCacheAbsolutePath() / sShaderCacheDirectory /
                                   cacheFileName;
     if (vk::ShaderModule shaderModule = LoadFromCache(uuid, sourcePath, shaderCachePath)) {
@@ -146,6 +146,7 @@ bool ShaderManager::LoadShaderStageCreateInfo(const ShaderLoadInfo &loadInfo,
         }
         return true;
     }
+    DEBUG_BREAK;
     return false;
 }
 

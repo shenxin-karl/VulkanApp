@@ -22,13 +22,14 @@
 #include "InstanceProperties.h"
 #include "ExtValidation.h"
 #include "Foundation/Exception.h"
+#include "Foundation/Logger.h"
 
 namespace vkgfx {
 
 static PFN_vkCreateDebugReportCallbackEXT gVkCreateDebugReportCallbackEXT = NULL;
 static PFN_vkDebugReportMessageEXT gVkDebugReportMessageEXT = NULL;
 static PFN_vkDestroyDebugReportCallbackEXT gVkDestroyDebugReportCallbackEXT = NULL;
-static VkDebugReportCallbackEXT gVebugReportCallback = NULL;
+static VkDebugReportCallbackEXT gDebugReportCallback = NULL;
 static bool sBCanUseDebugReport = false;
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL MyDebugReportCallback(VkDebugReportFlagsEXT flags,
@@ -39,9 +40,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL MyDebugReportCallback(VkDebugReportFlagsEX
                                                             const char *pLayerPrefix,
                                                             const char *pMessage,
                                                             void *pUserData) {
-    OutputDebugStringA(pMessage);
-    //OutputDebugStringA("\n");
-    return VK_FALSE;
+    //Logger::Error(pMessage);
 }
 
 const VkValidationFeatureEnableEXT featuresRequested[] = {
@@ -92,16 +91,16 @@ void ExtDebugReportOnCreate(vk::Instance instance) {
         VkResult res = gVkCreateDebugReportCallbackEXT(instance,
                                                        &debugReportCallbackInfo,
                                                        nullptr,
-                                                       &gVebugReportCallback);
+                                                       &gDebugReportCallback);
         assert(res == VK_SUCCESS);
     }
 }
 
 void ExtDebugReportOnDestroy(vk::Instance instance) {
     // It should happen after destroing device, before destroying instance.
-    if (gVebugReportCallback) {
-        gVkDestroyDebugReportCallbackEXT(instance, gVebugReportCallback, nullptr);
-        gVebugReportCallback = nullptr;
+    if (gDebugReportCallback) {
+        gVkDestroyDebugReportCallbackEXT(instance, gDebugReportCallback, nullptr);
+        gDebugReportCallback = nullptr;
     }
 }
 }    // namespace vkgfx

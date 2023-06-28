@@ -5,15 +5,21 @@
 #include <dxcapi.h>
 
 #include "EnumDefinition.h"
+#include "Foundation/CompileEnvInfo.hpp"
 #include "Foundation/NamespeceAlias.h"
 #include "Foundation/NonCopyable.h"
 
 namespace vkgfx {
+class DefineList;
 
 class DefineList;
 class ShaderCompiler : public NonCopyable {
 public:
-    bool Compile(const stdfs::path &path, std::string_view entryPoint, ShaderType type, const DefineList &defineList);
+    bool Compile(const stdfs::path &path,
+        std::string_view entryPoint,
+        ShaderType type,
+        const DefineList &defineList,
+        bool makeDebugInfo = !CompileEnvInfo::IsModeRelease());
     auto GetErrorMessage() const -> const std::string &;
     auto GetByteCodePtr() const -> void *;
     auto GetByteCodeSize() const -> size_t;

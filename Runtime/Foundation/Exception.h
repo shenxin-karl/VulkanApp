@@ -17,6 +17,9 @@ public:
     FormatAndLocation(const std::string &fmt, const std::source_location &l = std::source_location::current())
         : fmt(fmt.c_str(), fmt.length()), location(l) {
     }
+    FormatAndLocation(const char *cString, const std::source_location &l = std::source_location::current())
+        : fmt(cString, (cString != nullptr ? strlen(cString) : 0)), location(l) {
+    }
 };
 
 class Exception : public std::exception {

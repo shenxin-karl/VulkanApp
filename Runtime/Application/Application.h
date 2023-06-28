@@ -5,6 +5,8 @@
 #include <GLFW/glfw3.h>
 #include "IApplication.h"
 #include "VulkanRenderer/Device.h"
+#include "VulkanRenderer/StaticBufferPool.h"
+#include "VulkanRenderer/UploadHeap.h"
 
 class Application : public IApplication {
 public:
@@ -25,4 +27,9 @@ public:
 private:
     bool _isDone = false;
     GLFWwindow *_pWindow = nullptr;
+private:
+    vk::Pipeline _graphicsPipeline;
+    vk::PipelineLayout _pipelineLayout;
+    vkgfx::StaticBufferPool _vertexBuffer;
+    vkgfx::UploadHeap _uploadHeap;
 };

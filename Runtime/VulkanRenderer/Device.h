@@ -1,6 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
-#include <vma/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 #include <GLFW/glfw3.h>
 #include "Foundation/NonCopyable.h"
 #include "Foundation/RuntimeStatic.h"
@@ -20,6 +20,7 @@ public:
         bool gpuValidationLayerEnabled,
         GLFWwindow *pWindow);
     void OnDestroy();
+    auto GetInstance() const -> vk::Instance;
     auto GetVKDevice() const -> vk::Device;
     auto GetPresentQueue() const -> vk::Queue;
     auto GetGraphicsQueue() const -> vk::Queue;

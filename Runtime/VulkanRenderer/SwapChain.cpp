@@ -6,27 +6,19 @@
 
 namespace vkgfx {
 
-void SwapChain::OnCreate(Device *pDevice, uint32_t numBackBuffers, GLFWwindow *pWindow) {
+void SwapChain::OnCreate(Device *pDevice, uint32_t numBackBuffers) {
     SetDevice(pDevice);
     _backBufferCount = numBackBuffers;
     _presentQueue = pDevice->GetPresentQueue();
 
-    _swapChainFormat.format = vk::Format::eR8G8B8A8Unorm;
-    _swapChainFormat.colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
+    SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(pDevice->GetPhysicalDevice());
+    ChooseSwapSurfaceFormat(swapChainSupport);
 
     vk::Device device = pDevice->GetVKDevice();
-    _cmdBufferExecutedFences.resize(numBackBuffers);
     _imageAvailableSemaphores.resize(numBackBuffers);
-    _renderFinishedSemaphores.resize(numBackBuffers);
     for (uint32_t i = 0; i < numBackBuffers; ++i) {
-        vk::FenceCreateInfo fenceCreateInfo;
         vk::SemaphoreCreateInfo semaphoreCreateInfo;
-        fenceCreateInfo.sType = vk::StructureType::eFenceCreateInfo;
-        fenceCreateInfo.flags = (i == 0 ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags{});
-        semaphoreCreateInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
-        _cmdBufferExecutedFences[i] = device.createFence(fenceCreateInfo);
         _imageAvailableSemaphores[i] = device.createSemaphore(semaphoreCreateInfo);
-        _renderFinishedSemaphores[i] = device.createSemaphore(semaphoreCreateInfo);
     }
     CreateRenderPass();
     SetIsCreate(true);
@@ -35,26 +27,13 @@ void SwapChain::OnCreate(Device *pDevice, uint32_t numBackBuffers, GLFWwindow *p
 void SwapChain::OnDestroy() {
     DestroyRenderPass();
     vk::Device device = GetDevice()->GetVKDevice();
-    for (size_t i = 0; i < _cmdBufferExecutedFences.size(); ++i) {
-        device.destroy(_cmdBufferExecutedFences[i]);
+    for (size_t i = 0; i < _imageAvailableSemaphores.size(); ++i) {
         device.destroySemaphore(_imageAvailableSemaphores[i]);
-        device.destroySemaphore(_renderFinishedSemaphores[i]);
     }
-    _cmdBufferExecutedFences.clear();
     _imageAvailableSemaphores.clear();
-    _renderFinishedSemaphores.clear();
 
     SetIsCreate(false);
     SetDevice(nullptr);
-}
-
-void SwapChain::GetSemaphores(vk::Semaphore &imageAvailableSemaphore,
-    vk::Semaphore &renderFinishedSemaphore,
-    vk::Fence &cmdBufferExecutedFences) const {
-
-    imageAvailableSemaphore = _imageAvailableSemaphores[_prevSemaphoreIndex];
-    renderFinishedSemaphore = _renderFinishedSemaphores[_semaphoreIndex];
-    cmdBufferExecutedFences = _cmdBufferExecutedFences[_semaphoreIndex];
 }
 
 void SwapChain::Resize(uint32_t width, uint32_t height, bool bVSyncOn) {
@@ -62,10 +41,10 @@ void SwapChain::Resize(uint32_t width, uint32_t height, bool bVSyncOn) {
     OnCreateWindowDependentResources(width, height, bVSyncOn);
 }
 
-auto SwapChain::Present() -> vk::Result {
+auto SwapChain::Present(vk::Semaphore renderFinishedSemaphore) -> vk::Result {
     vk::PresentInfoKHR presentInfo;
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &_renderFinishedSemaphores[_semaphoreIndex];
+    presentInfo.pWaitSemaphores = &renderFinishedSemaphore;
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &_swapChain;
     presentInfo.pImageIndices = &_imageIndex;
@@ -83,9 +62,11 @@ auto SwapChain::WaitForSwapChain() -> uint32_t {
 
     _prevSemaphoreIndex = _semaphoreIndex;
     _semaphoreIndex = (_semaphoreIndex + 1 % _backBufferCount);
-    VKException::Throw(device.waitForFences(1, &_cmdBufferExecutedFences[_prevSemaphoreIndex], VK_TRUE, UINT64_MAX));
-    VKException::Throw(device.resetFences(1, &_cmdBufferExecutedFences[_prevSemaphoreIndex]));
     return _imageIndex;
+}
+
+auto SwapChain::GetImageAvailableSemaphore() const -> vk::Semaphore {
+    return _imageAvailableSemaphores[_prevSemaphoreIndex];
 }
 
 auto SwapChain::GetCurrentBackBuffer() const -> vk::Image {
@@ -147,39 +128,88 @@ void SwapChain::DestroyRTV() {
 }
 
 void SwapChain::CreateRenderPass() {
-    vk::AttachmentDescription attachments[1];
-    attachments[0].format = _swapChainFormat.format;
-    attachments[0].samples = vk::SampleCountFlagBits::e1;
-    attachments[0].loadOp = vk::AttachmentLoadOp::eDontCare;
-    attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
-    attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-    attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-    attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
+    //vk::AttachmentDescription attachments[1];
+    //attachments[0].format = _swapChainFormat.format;
+    //attachments[0].samples = vk::SampleCountFlagBits::e1;
+    //attachments[0].loadOp = vk::AttachmentLoadOp::eDontCare;
+    //attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
+    //attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    //attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    //attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
+    //attachments[0].flags = {};
 
-    vk::AttachmentReference colorReference;
-    colorReference.attachment = 0;
-    colorReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
+    //vk::AttachmentReference colorReference;
+    //colorReference.attachment = 0;
+    //colorReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
 
-    vk::SubpassDescription subpass;
-    subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &colorReference;
+    //vk::SubpassDescription subpass;
+    //subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+    //subpass.colorAttachmentCount = 1;
+    //subpass.pColorAttachments = &colorReference;
 
-    vk::SubpassDependency dep;
-    dep.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-    dep.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    dep.srcAccessMask = {};
-    dep.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    dep.dstSubpass = VK_SUBPASS_EXTERNAL;
+    //vk::SubpassDependency dep;
+    //dep.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+    //dep.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    //dep.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    //dep.dstSubpass = VK_SUBPASS_EXTERNAL;
 
-    vk::RenderPassCreateInfo renderPassCreateInfo;
-    renderPassCreateInfo.attachmentCount = 1;
-    renderPassCreateInfo.pAttachments = attachments;
-    renderPassCreateInfo.subpassCount = 1;
-    renderPassCreateInfo.pSubpasses = &subpass;
-    renderPassCreateInfo.dependencyCount = 1;
-    renderPassCreateInfo.pDependencies = &dep;
-    _renderPass = GetDevice()->GetVKDevice().createRenderPass(renderPassCreateInfo);
+    //vk::RenderPassCreateInfo renderPassCreateInfo;
+    //renderPassCreateInfo.attachmentCount = 1;
+    //renderPassCreateInfo.pAttachments = attachments;
+    //renderPassCreateInfo.subpassCount = 1;
+    //renderPassCreateInfo.pSubpasses = &subpass;
+    //renderPassCreateInfo.dependencyCount = 1;
+    //renderPassCreateInfo.pDependencies = &dep;
+    //_renderPass = GetDevice()->GetVKDevice().createRenderPass(renderPassCreateInfo);
+
+         // color RT
+        VkAttachmentDescription attachments[1];
+        attachments[0].format = (VkFormat)_swapChainFormat.format;
+        attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        attachments[0].flags = 0;
+
+        VkAttachmentReference color_reference = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+
+        VkSubpassDescription subpass = {};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.flags = 0;
+        subpass.inputAttachmentCount = 0;
+        subpass.pInputAttachments = NULL;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &color_reference;
+        subpass.pResolveAttachments = NULL;
+        subpass.pDepthStencilAttachment = NULL;
+        subpass.preserveAttachmentCount = 0;
+        subpass.pPreserveAttachments = NULL;
+
+        VkSubpassDependency dep = {};
+        dep.dependencyFlags = 0;
+        dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep.dstSubpass = 0;
+        dep.srcAccessMask = 0;
+        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep.srcSubpass = VK_SUBPASS_EXTERNAL;
+
+        VkRenderPassCreateInfo rp_info = {};
+        rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rp_info.pNext = NULL;
+        rp_info.attachmentCount = 1;
+        rp_info.pAttachments = attachments;
+        rp_info.subpassCount = 1;
+        rp_info.pSubpasses = &subpass;
+        rp_info.dependencyCount = 1;
+        rp_info.pDependencies = &dep;
+
+        VkRenderPass m_render_pass_swap_chain = VK_NULL_HANDLE;
+        VkResult res = vkCreateRenderPass(GetDevice()->GetVKDevice(), &rp_info, NULL, &m_render_pass_swap_chain);
+        assert(res == VK_SUCCESS);
 }
 
 void SwapChain::DestroyRenderPass() {
@@ -296,6 +326,27 @@ void SwapChain::OnDestroyWindowDependentResources() {
     DestroyFrameBuffers();
     DestroyRTV();
     GetDevice()->GetVKDevice().destroySwapchainKHR(_swapChain);
+}
+
+auto SwapChain::QuerySwapChainSupport(vk::PhysicalDevice physicalDevice) const -> SwapChainSupportDetails {
+    SwapChainSupportDetails details;
+    details.capabilities = physicalDevice.getSurfaceCapabilitiesKHR(GetDevice()->GetSurface());
+    details.formats = physicalDevice.getSurfaceFormatsKHR(GetDevice()->GetSurface());
+    details.presentModes = physicalDevice.getSurfacePresentModesKHR(GetDevice()->GetSurface());
+    return details;
+}
+
+void SwapChain::ChooseSwapSurfaceFormat(const SwapChainSupportDetails &swapChainSupport) {
+    for (const vk::SurfaceFormatKHR &surfaceFormat : swapChainSupport.formats) {
+        const vk::Format format = surfaceFormat.format;
+        if (format == vk::Format::eR8G8B8A8Unorm || format == vk::Format::eB8G8R8A8Unorm ||
+            format == vk::Format::eA2B10G10R10UnormPack32 || format == vk::Format::eA2R10G10B10UnormPack32 ||
+            format == vk::Format::eR16G16B16A16Sfloat) {
+            _swapChainFormat = surfaceFormat;
+            return;
+        }
+    }
+    Exception::Throw("There is no suitable swap chain format");
 }
 
 }    // namespace vkgfx
