@@ -13,6 +13,7 @@
 #include <vma/vk_mem_alloc.h>
 
 #include "VKException.h"
+#include "Foundation/Logger.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -198,6 +199,8 @@ void Device::OnCreateEx(const char *pAppName,
         }
     }
 
+
+    uint32_t queueCount = 1;
     float queuePriorities[1] = {0.f};
     vk::DeviceQueueCreateInfo queueCreateInfos[2];
     queueCreateInfos[0].sType = vk::StructureType::eDeviceQueueCreateInfo;
@@ -206,11 +209,14 @@ void Device::OnCreateEx(const char *pAppName,
     queueCreateInfos[0].pQueuePriorities = queuePriorities;
     queueCreateInfos[0].queueFamilyIndex = _graphicsQueueFamilyIndex;
 
-    queueCreateInfos[1].sType = vk::StructureType::eDeviceQueueCreateInfo;
-    queueCreateInfos[1].pNext = nullptr;
-    queueCreateInfos[1].queueCount = 1;
-    queueCreateInfos[1].pQueuePriorities = queuePriorities;
-    queueCreateInfos[1].queueFamilyIndex = _computeQueueFamilyIndex;
+    if (_computeQueueFamilyIndex != _graphicsQueueFamilyIndex) {
+        queueCount = 2;
+	    queueCreateInfos[1].sType = vk::StructureType::eDeviceQueueCreateInfo;
+	    queueCreateInfos[1].pNext = nullptr;
+	    queueCreateInfos[1].queueCount = 1;
+	    queueCreateInfos[1].pQueuePriorities = queuePriorities;
+	    queueCreateInfos[1].queueFamilyIndex = _computeQueueFamilyIndex;
+    }
 
     vk::PhysicalDeviceFeatures physicalDeviceFeatures = {};
     physicalDeviceFeatures.fillModeNonSolid = true;
@@ -244,7 +250,7 @@ void Device::OnCreateEx(const char *pAppName,
     vk::DeviceCreateInfo deviceCreateInfo = {
         .sType = vk::StructureType::eDeviceCreateInfo,
         .pNext = nullptr,
-        .queueCreateInfoCount = 2,
+        .queueCreateInfoCount = queueCount,
         .pQueueCreateInfos = queueCreateInfos,
         .enabledLayerCount = static_cast<uint32_t>(deviceProperties._deviceExtensionNames.size()),
         .ppEnabledLayerNames = deviceProperties._deviceExtensionNames.data(),
@@ -272,7 +278,9 @@ void Device::OnCreateEx(const char *pAppName,
         _presentQueue = _device.getQueue(_presentQueueFamilyIndex, 0);
     }
 
-    if (_computeQueueFamilyIndex != -1) {
+    if (_computeQueueFamilyIndex == _graphicsQueueFamilyIndex) {
+	    _computeQueue = _graphicsQueue;
+    } else if (_computeQueueFamilyIndex > -1) {
         _computeQueue = _device.getQueue(_computeQueueFamilyIndex, 0);
     }
 
@@ -311,12 +319,21 @@ static vk::PhysicalDevice SelectPhysicalDevice(const std::vector<vk::PhysicalDev
 }
 
 void Device::CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip) {
+    uint32_t apiVersion;
+    VkResult result = vkEnumerateInstanceVersion(&apiVersion);
+    if (result == VK_SUCCESS) {
+        uint32_t major = VK_VERSION_MAJOR(apiVersion);
+	    uint32_t minor = VK_VERSION_MINOR(apiVersion);
+	    uint32_t patch = VK_VERSION_PATCH(apiVersion);
+        Logger::Info("Current Vulkan Api Version: major {}, minor {}, patch {}", major, minor, patch);
+    }
+
     vk::ApplicationInfo applicationInfo = {
         .pApplicationName = pAppName,
         .applicationVersion = 1,
         .pEngineName = pEngineName,
         .engineVersion = 1,
-        .apiVersion = VK_VERSION_1_1,
+        .apiVersion = apiVersion,
     };
 
     vk::InstanceCreateInfo instanceCreateInfo = {

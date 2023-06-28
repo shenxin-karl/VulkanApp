@@ -4,7 +4,7 @@
 
 namespace nstd {
 
-static thread_local std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 
 std::string to_string(const std::wstring &string) {
     return converter.to_bytes(string);

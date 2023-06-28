@@ -25,7 +25,7 @@ public:
     ~ShaderManager();
     void Initialize();
     void Destroy();
-    auto LoadShaderModule(ShaderLoadInfo loadInfo) -> vk::ShaderModule;
+    auto LoadShaderModule(const ShaderLoadInfo &loadInfo) -> vk::ShaderModule;
     auto GetShaderDependency(stdfs::path path) -> ShaderDependency &;
     bool LoadShaderStageCreateInfo(const ShaderLoadInfo &loadInfo, vk::PipelineShaderStageCreateInfo &outputCreateInfo);
 private:

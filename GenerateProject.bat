@@ -1,4 +1,5 @@
 xmake project -k vsxmake -y Solution
+xmake project -k compile_commands
 
 @echo off
 set source=.clang-format

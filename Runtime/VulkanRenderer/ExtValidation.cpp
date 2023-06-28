@@ -39,7 +39,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL MyDebugReportCallback(VkDebugReportFlagsEX
                                                             const char *pLayerPrefix,
                                                             const char *pMessage,
                                                             void *pUserData) {
-    //OutputDebugStringA(pMessage);
+    OutputDebugStringA(pMessage);
     //OutputDebugStringA("\n");
     return VK_FALSE;
 }
