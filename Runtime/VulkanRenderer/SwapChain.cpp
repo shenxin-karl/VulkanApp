@@ -65,7 +65,7 @@ auto SwapChain::WaitForSwapChain() -> uint32_t {
     return _imageIndex;
 }
 
-auto SwapChain::GetImageAvailableSemaphore() const -> vk::Semaphore {
+auto SwapChain::GetImageAvailableSemaphore() const -> const vk::Semaphore & {
     return _imageAvailableSemaphores[_prevSemaphoreIndex];
 }
 
@@ -95,6 +95,33 @@ auto SwapChain::GetFrameBuffer(size_t index) const -> vk::Framebuffer {
 
 auto SwapChain::GetCurrentFrameBuffer() const -> vk::Framebuffer {
     return _framebuffers[_imageIndex];
+}
+
+auto SwapChain::GetRenderPassBeginInfo() const -> vk::RenderPassBeginInfo {
+    vk::RenderPassBeginInfo renderPassBeginInfo;
+    renderPassBeginInfo.renderPass = vkgfx::gSwapChain->GetRenderPass();
+    renderPassBeginInfo.framebuffer = vkgfx::gSwapChain->GetCurrentFrameBuffer();
+    renderPassBeginInfo.renderArea.offset = {0, 0};
+    renderPassBeginInfo.renderArea.extent = {_width, _height};
+    return renderPassBeginInfo;
+}
+
+auto SwapChain::GetFullScreenViewport() const -> vk::Viewport {
+    vk::Viewport viewport;
+    viewport.x = 0.f;
+    viewport.y = 0.f;
+    viewport.width = static_cast<float>(_width);
+    viewport.height = static_cast<float>(_height);
+    viewport.minDepth = 0.f;
+    viewport.maxDepth = 1.f;
+    return viewport;
+}
+
+auto SwapChain::GetFullScreenScissor() const -> vk::Rect2D {
+    vk::Rect2D scissorRect;
+    scissorRect.offset = {0, 0};
+    scissorRect.extent = {_width, _height};
+    return scissorRect;
 }
 
 void SwapChain::CreateRTV() {
@@ -198,6 +225,9 @@ void SwapChain::DestroyFrameBuffers() {
 
 void SwapChain::OnCreateWindowDependentResources(size_t width, size_t height, bool bVSyncOn) {
     _VSyncOn = bVSyncOn;
+    _width = width;
+    _height = height;
+
     CreateRenderPass();
 
     vk::PhysicalDevice physicalDevice = GetDevice()->GetPhysicalDevice();

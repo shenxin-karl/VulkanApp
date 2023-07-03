@@ -59,13 +59,14 @@ void CommandBufferRing::OnDestroy() {
 void CommandBufferRing::OnBeginFrame() {
     _frameIndex = (_frameIndex + 1) % _numberFrameOfAllocators;
     vk::Device device = GetDevice()->GetVKDevice();
-    auto &currentFrame = _frameCommandBuffers[_frameIndex];
+    CommandBuffersPreFrame &currentFrame = _frameCommandBuffers[_frameIndex];
+    currentFrame.currentAllocateIndex = 0;
     VKException::Throw(device.waitForFences(1, &currentFrame.executedFinishedFence, VK_TRUE, UINT64_MAX));
     VKException::Throw(device.resetFences(1, &currentFrame.executedFinishedFence));
 }
 
 auto CommandBufferRing::GetNewCommandBuffer() -> vk::CommandBuffer {
-    auto &currentFrame = _frameCommandBuffers[_frameIndex];
+	CommandBuffersPreFrame &currentFrame = _frameCommandBuffers[_frameIndex];
     ExceptionAssert(currentFrame.currentAllocateIndex <= _commandBufferPreBackBuffer);
     return currentFrame.commandBuffers[currentFrame.currentAllocateIndex++];
 }
@@ -78,8 +79,21 @@ auto CommandBufferRing::GetExecutedFinishedFence() const -> vk::Fence {
     return _frameCommandBuffers[_frameIndex].executedFinishedFence;
 }
 
-auto CommandBufferRing::GetRenderFinishedSemaphore() const -> vk::Semaphore {
+auto CommandBufferRing::GetRenderFinishedSemaphore() const -> const vk::Semaphore & {
     return _frameCommandBuffers[_frameIndex].renderFinishedSemaphore;
+}
+
+void CommandBufferRing::WaitForRenderFinished() {
+    vk::Device device = GetDevice()->GetVKDevice();
+	uint32_t targetFrameIndex = _frameIndex + _numberFrameOfAllocators;
+    for (uint32_t i = _frameIndex; i < targetFrameIndex; ++i) {
+	    uint32_t index = i % _numberFrameOfAllocators;
+		CommandBuffersPreFrame &currentFrame = _frameCommandBuffers[index];
+		VKException::Throw(device.waitForFences(1, &currentFrame.executedFinishedFence, VK_TRUE, UINT64_MAX));
+		//VKException::Throw(device.resetFences(1, &currentFrame.executedFinishedFence));
+        currentFrame.currentAllocateIndex = 0;
+    }
+    _frameIndex = 0;
 }
 
 }    // namespace vkgfx

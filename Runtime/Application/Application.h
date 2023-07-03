@@ -32,4 +32,6 @@ private:
     vk::PipelineLayout _pipelineLayout;
     vkgfx::StaticBufferPool _vertexBuffer;
     vkgfx::UploadHeap _uploadHeap;
+
+    vk::DescriptorBufferInfo _triangleBufferInfo = {};
 };

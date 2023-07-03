@@ -163,11 +163,11 @@ auto ShaderManager::LoadFromCache(UUID128 uuid, const stdfs::path &sourcePath, c
     if (dependency.GetLastWriteTime() <= cacheLastWriteTime) {
         std::ifstream fin(cachePath, std::ios::binary);
         fin.seekg(0, SEEK_END);
-        auto fileSize = fin.tellg();
+        uint32_t fileSize = fin.tellg();
         fin.seekg(0, SEEK_SET);
         std::vector<char> byteCode;
-        byteCode.resize(fileSize / sizeof(uint32_t), 0);
-        fin.readsome(byteCode.data(), fileSize);
+        byteCode.resize(fileSize, 0);
+        fin.read(byteCode.data(), fileSize);
         shaderModule = LoadFromByteCode(uuid, byteCode);
         _shaderByteCodeMap[uuid] = std::move(byteCode);
     }

@@ -32,11 +32,7 @@ Device::Device() {
 Device::~Device() {
 }
 
-void Device::OnCreate(const char *pAppName,
-                      const char *pEngineName,
-                      bool enableValidationLayers,
-                      GLFWwindow *pWindow) {
-
+void Device::OnCreate(const char *pAppName, const char *pEngineName, bool enableValidationLayers, GLFWwindow *pWindow) {
     InitDynamicLoader();
 
     InstanceProperties instanceProperties;
@@ -44,18 +40,20 @@ void Device::OnCreate(const char *pAppName,
 
     instanceProperties.AddExtension(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
     instanceProperties.AddExtension(VK_KHR_SURFACE_EXTENSION_NAME);
-    ExtDebugUtilsCheckInstanceExtensions(instanceProperties);
-
-    if (enableValidationLayers) {
-        ExtDebugMessenger::AddExtensions(instanceProperties);
-    }
     instanceProperties.AddExtension(GetGLFWRequiredInstanceExtensions());
 
-    CreateInstance(pAppName, pEngineName, instanceProperties, enableValidationLayers);
+    gExtDebugUtils = ExtDebugUtils::Attach(instanceProperties);
 
-    if (enableValidationLayers && ExtDebugMessenger::IsSupported()) {
+    if (enableValidationLayers) {
+        gExtValidation = ExtValidation::Attach(instanceProperties, GetDebugMessengerCreateInfo());
+    }
+    CreateInstance(pAppName, pEngineName, instanceProperties);
 
-        //ExtDebugMessenger::OnCreate(_instance, )
+    if (gExtDebugUtils != nullptr) {
+        gExtDebugUtils->OnCreate();
+    }
+    if (gExtValidation != nullptr) {
+        gExtValidation->OnCreate(_instance, nullptr);
     }
 
     VkSurfaceKHR vkSurface;
@@ -82,8 +80,11 @@ void Device::OnDestroy() {
         _device = nullptr;
     }
 
-    if (ExtDebugMessenger::IsLoaded()) {
-        ExtDebugMessenger::OnDestroy(_instance, nullptr);
+    if (gExtValidation != nullptr) {
+        gExtValidation->OnDestroy(_instance);
+    }
+    if (gExtDebugUtils != nullptr) {
+        gExtDebugUtils->OnDestroy();
     }
 
     _instance.destroy();
@@ -160,7 +161,7 @@ auto Device::GetPipelineCache() const -> vk::PipelineCache {
     return _pipelineCache;
 }
 
-void Device::GPUFlush() {
+void Device::WaitGPUFlush() {
     _device.waitIdle();
 }
 
@@ -255,14 +256,14 @@ void Device::OnCreateEx(const DeviceProperties &deviceProperties) {
     physicalDeviceFeatures2.features = physicalDeviceFeatures;
     physicalDeviceFeatures2.pNext = &robustness2;
 
-    vk::DeviceCreateInfo deviceCreateInfo = {
-        .sType = vk::StructureType::eDeviceCreateInfo,
-        .pNext = &physicalDeviceFeatures2,
-        .queueCreateInfoCount = queueCount,
-        .pQueueCreateInfos = queueCreateInfos,
-        .enabledLayerCount = static_cast<uint32_t>(deviceProperties._deviceExtensionNames.size()),
-        .ppEnabledLayerNames = deviceProperties._deviceExtensionNames.data(),
-    };
+    vk::DeviceCreateInfo deviceCreateInfo = {};
+
+    deviceCreateInfo.sType = vk::StructureType::eDeviceCreateInfo;
+    deviceCreateInfo.pNext = &physicalDeviceFeatures2;
+    deviceCreateInfo.queueCreateInfoCount = queueCount;
+    deviceCreateInfo.pQueueCreateInfos = queueCreateInfos;
+    deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(deviceProperties._deviceExtensionNames.size());
+    deviceCreateInfo.ppEnabledLayerNames = deviceProperties._deviceExtensionNames.data();
 
     _device = _physicalDevice.createDevice(deviceCreateInfo);
     InitDeviceExtFunc();
@@ -324,7 +325,7 @@ static vk::PhysicalDevice SelectPhysicalDevice(const std::vector<vk::PhysicalDev
     return ratings.rbegin()->second;
 }
 
-void Device::CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip, bool enableValidationLayers) {
+void Device::CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip) {
     uint32_t apiVersion;
     VkResult result = vkEnumerateInstanceVersion(&apiVersion);
     if (result == VK_SUCCESS) {
@@ -334,29 +335,20 @@ void Device::CreateInstance(const char *pAppName, const char *pEngineName, const
         Logger::Info("Current Vulkan Api Version: major {}, minor {}, patch {}", major, minor, patch);
     }
 
-    vk::ApplicationInfo applicationInfo = {
-        .pApplicationName = pAppName,
-        .applicationVersion = 1,
-        .pEngineName = pEngineName,
-        .engineVersion = 1,
-        .apiVersion = apiVersion,
-    };
+    vk::ApplicationInfo applicationInfo = {};
+    applicationInfo.pApplicationName = pAppName;
+    applicationInfo.applicationVersion = 1;
+    applicationInfo.pEngineName = pEngineName;
+    applicationInfo.engineVersion = 1;
+    applicationInfo.apiVersion = apiVersion;
 
-    vk::InstanceCreateInfo instanceCreateInfo = {
-        .pNext = ip._pNext,
-        .pApplicationInfo = &applicationInfo,
-        .enabledLayerCount = static_cast<uint32_t>(ip._instanceLayerNames.size()),
-        .ppEnabledLayerNames = ip._instanceLayerNames.data(),
-        .enabledExtensionCount = static_cast<uint32_t>(ip._instanceExtensionNames.size()),
-        .ppEnabledExtensionNames = ip._instanceExtensionNames.data(),
-    };
-
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-    if (enableValidationLayers) {
-	    debugCreateInfo = GetDebugMessengerCreateInfo();
-        instanceCreateInfo.pNext = &debugCreateInfo;
-        debugCreateInfo.pNext = ip.GetNext();
-    }
+    vk::InstanceCreateInfo instanceCreateInfo = {};
+    instanceCreateInfo.pNext = ip.GetNext();
+    instanceCreateInfo.pApplicationInfo = &applicationInfo;
+    instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(ip._instanceLayerNames.size());
+    instanceCreateInfo.ppEnabledLayerNames = ip._instanceLayerNames.data();
+    instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(ip._instanceExtensionNames.size());
+    instanceCreateInfo.ppEnabledExtensionNames = ip._instanceExtensionNames.data();
 
     _instance = vk::createInstance(instanceCreateInfo);
     InitInstanceExtFunc();
@@ -385,15 +377,27 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Device::VulkanDebugCallback(VkDebugUtilsMessageSe
     const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
     void *pUserData) {
 
-    Logger::Error("Vulkan Error: {}", pCallbackData->pMessage);
+    switch (messageType) {
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
+        Logger::Info("Vulkan Info: {}", pCallbackData->pMessage);
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
+        Logger::Error("Vulkan Error: {}", pCallbackData->pMessage);
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
+        Logger::Warning("Vulkan Warning: {}", pCallbackData->pMessage);
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT:
+    default:
+        break;
+    }
     return VK_FALSE;
 }
 
 auto Device::GetDebugMessengerCreateInfo() -> VkDebugUtilsMessengerCreateInfoEXT {
     VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
     createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
                              VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |

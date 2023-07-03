@@ -1,29 +1,29 @@
-// AMD Cauldron code
-//
-// Copyright(c) 2018 Advanced Micro Devices, Inc.All rights reserved.
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files(the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions :
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 #include "ExtDebugUtils.h"
 
 namespace vkgfx {
 
-void SetResourceName(vk::Device device, vk::ObjectType objectType, uint64_t handle, std::string_view name) {
+static std::mutex sMutex = {};
+
+auto ExtDebugUtils::Attach(InstanceProperties &instanceProperties) -> std::unique_ptr<ExtDebugUtils> {
+    if (instanceProperties.AddExtension("VK_EXT_debug_utils")) {
+        return std::make_unique<ExtDebugUtils>();
+    }
+    return nullptr;
+}
+
+void ExtDebugUtils::OnCreate() {
+}
+
+void ExtDebugUtils::OnDestroy() {
+}
+
+void ExtDebugUtils::SetResourceName(vk::Device device,
+    vk::ObjectType objectType,
+    uint64_t handle,
+    std::string_view name) {
+
     if (VULKAN_HPP_DEFAULT_DISPATCHER.vkSetDebugUtilsObjectNameEXT && handle && !name.empty()) {
-        std::unique_lock<std::mutex> lock(s_mutex);
+        std::unique_lock<std::mutex> lock(sMutex);
         vk::DebugUtilsObjectNameInfoEXT nameInfo = {};
         nameInfo.sType = vk::StructureType::eDebugUtilsObjectNameInfoEXT;
         nameInfo.objectType = objectType;
@@ -33,20 +33,20 @@ void SetResourceName(vk::Device device, vk::ObjectType objectType, uint64_t hand
     }
 }
 
-void SetPerfMarkerBegin(vk::CommandBuffer cmd, std::string_view name) {
+void ExtDebugUtils::SetPrefMarkerBegin(vk::CommandBuffer cmd, std::string_view name) {
     if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBeginDebugUtilsLabelEXT && !name.empty()) {
         std::array<float, 4> color = {1.0f, 0.0f, 0.0f, 1.0f};
-	    vk::DebugUtilsLabelEXT label = {
+        vk::DebugUtilsLabelEXT label = {
             .pLabelName = name.data(),
             .color = color,
-	    };
+        };
         cmd.beginDebugUtilsLabelEXT(label);
     }
 }
 
-void SetPerfMarkerEnd(vk::CommandBuffer cmd) {
+void ExtDebugUtils::SetPrefMarkerEnd(vk::CommandBuffer cmd) {
     if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdEndDebugUtilsLabelEXT) {
-	    cmd.endDebugUtilsLabelEXT();
+        cmd.endDebugUtilsLabelEXT();
     }
 }
 

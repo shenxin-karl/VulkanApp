@@ -4,40 +4,40 @@
 
 namespace vkgfx {
 
-static VkDebugUtilsMessengerEXT *sDebugMessenger = nullptr;
-static bool sIsExtSupported = false;
+auto ExtValidation::Attach(InstanceProperties &instanceProperties, const VkDebugUtilsMessengerCreateInfoEXT &createInfo)
+    -> std::unique_ptr<ExtValidation> {
 
-auto ExtDebugMessenger::OnCreate(vk::Instance instance,
-    const VkDebugUtilsMessengerCreateInfoEXT &createInfo,
-    const VkAllocationCallbacks *pAllocator) -> vk::Result {
+    if (!instanceProperties.AddLayer("VK_LAYER_KHRONOS_validation")) {
+        return nullptr;
+    }
 
+    std::unique_ptr<ExtValidation> pResult = std::make_unique<ExtValidation>();
+    pResult->_createInfo = createInfo;
+    pResult->_createInfo.pNext = instanceProperties.GetNext();
+    instanceProperties.SetNext(&pResult->_createInfo);
+    return pResult;
+}
+
+auto ExtValidation::OnCreate(vk::Instance instance, const VkAllocationCallbacks *pAllocator) -> vk::Result {
+    _pAllocator = pAllocator;
     PFN_vkCreateDebugUtilsMessengerEXT func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-        vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
+        instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
+
+    vk::Result result = vk::Result::eErrorExtensionNotPresent;
     if (func != nullptr) {
-        return static_cast<vk::Result>(func(instance, &createInfo, pAllocator, sDebugMessenger));
+        result = static_cast<vk::Result>(func(instance, &_createInfo, pAllocator, &_debugMessenger));
     }
-    return vk::Result::eErrorExtensionNotPresent;
+    return result;
 }
 
-void ExtDebugMessenger::OnDestroy(vk::Instance instance, const VkAllocationCallbacks *pAllocator) {
-	PFN_vkDestroyDebugUtilsMessengerEXT func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
-		vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
-    if (func != nullptr) {
-        func(instance, *sDebugMessenger, pAllocator);
+void ExtValidation::OnDestroy(vk::Instance instance) {
+    PFN_vkDestroyDebugUtilsMessengerEXT func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+        instance.getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
+
+    if (func != nullptr && _debugMessenger != VK_NULL_HANDLE) {
+        func(instance, _debugMessenger, _pAllocator);
     }
-    sDebugMessenger = VK_NULL_HANDLE;
-}
-
-void ExtDebugMessenger::AddLayers(InstanceProperties &instanceProperties) {
-    sIsExtSupported = instanceProperties.AddLayer("VK_LAYER_KHRONOS_validation");
-}
-
-bool ExtDebugMessenger::IsSupported() {
-    return sIsExtSupported;
-}
-
-bool ExtDebugMessenger::IsLoaded() {
-    return sDebugMessenger != nullptr;
+    _debugMessenger = VK_NULL_HANDLE;
 }
 
 }    // namespace vkgfx

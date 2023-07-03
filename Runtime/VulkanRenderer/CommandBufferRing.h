@@ -18,7 +18,8 @@ public:
     auto GetNewCommandBuffer() -> vk::CommandBuffer;
     auto GetCommandPool() const -> vk::CommandPool;
     auto GetExecutedFinishedFence() const -> vk::Fence;
-    auto GetRenderFinishedSemaphore() const -> vk::Semaphore;
+    auto GetRenderFinishedSemaphore() const -> const vk::Semaphore &;
+    void WaitForRenderFinished();
 private:
     struct CommandBuffersPreFrame {
         size_t currentAllocateIndex = 0;

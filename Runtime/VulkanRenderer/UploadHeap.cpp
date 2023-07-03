@@ -88,10 +88,6 @@ void UploadHeap::AddJob(const ImageUploadJob &job) {
 }
 
 void UploadHeap::Flush() {
-    if (_imageUploadJobs.empty()) {
-        return;
-    }
-
     vk::Device device = GetDevice()->GetVKDevice();
     vk::Queue graphicsQueue = GetDevice()->GetGraphicsQueue();
     VmaAllocator allocator = GetDevice()->GetAllocator();

@@ -15,7 +15,7 @@ public:
     void Resize(uint32_t width, uint32_t height, bool bVSyncOn);
     auto Present(vk::Semaphore renderFinishedSemaphore) -> vk::Result;
     auto WaitForSwapChain() -> uint32_t;
-    auto GetImageAvailableSemaphore() const -> vk::Semaphore;
+    auto GetImageAvailableSemaphore() const -> const vk::Semaphore &;
     auto GetCurrentBackBuffer() const -> vk::Image;
     auto GetCurrentBackBufferRTV() const -> vk::ImageView;
     auto GetSwapChain() const -> vk::SwapchainKHR;
@@ -23,6 +23,9 @@ public:
     auto GetRenderPass() const -> vk::RenderPass;
     auto GetFrameBuffer(size_t index) const -> vk::Framebuffer;
     auto GetCurrentFrameBuffer() const -> vk::Framebuffer;
+    auto GetRenderPassBeginInfo() const -> vk::RenderPassBeginInfo;
+    auto GetFullScreenViewport() const -> vk::Viewport;
+    auto GetFullScreenScissor() const -> vk::Rect2D;
 private:
     void CreateRTV();
     void DestroyRTV();
@@ -54,6 +57,8 @@ private:
     uint32_t _backBufferCount = 0;
     uint32_t _semaphoreIndex = 0;
     uint32_t _prevSemaphoreIndex = 0;
+    uint32_t _width = 0;
+    uint32_t _height = 0;
 };
 
 inline RuntimeStatic<SwapChain> gSwapChain;

@@ -32,7 +32,7 @@ public:
     auto GetNext() const -> void * {
         return _pNext;
     }
-    void SetNewNext(void *pNext) {
+    void SetNext(void *pNext) {
         _pNext = pNext;
     }
     void GetLayersAndExtensions(std::vector<const char *> &pInstance_layer_names,

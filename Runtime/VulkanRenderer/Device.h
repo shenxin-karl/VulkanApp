@@ -6,6 +6,7 @@
 #include "Foundation/RuntimeStatic.h"
 
 namespace vkgfx {
+class ExtValidation;
 
 class InstanceProperties;
 class DeviceProperties;
@@ -36,10 +37,10 @@ public:
     void CreatePipelineCache();
     void DestroyPipelineCache();
     auto GetPipelineCache() const -> vk::PipelineCache;
-    void GPUFlush();
+    void WaitGPUFlush();
 private:
     void OnCreateEx(const DeviceProperties &deviceProperties);
-    void CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip, bool enableValidationLayers);
+    void CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip);
     void InitDynamicLoader();
     void InitInstanceExtFunc();
     void InitDeviceExtFunc();

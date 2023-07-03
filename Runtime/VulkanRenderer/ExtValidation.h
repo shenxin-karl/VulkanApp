@@ -1,15 +1,24 @@
 #pragma once
 #include "InstanceProperties.h"
+#include "Foundation/NonCopyable.h"
+#include "vulkan/vulkan_core.h"
+#include "vulkan/vulkan_handles.hpp"
+#include <memory>
 
 namespace vkgfx {
 
-class ExtDebugMessenger {
+class ExtValidation : public NonCopyable {
 public:
-    static auto OnCreate(vk::Instance instance,
-        const VkDebugUtilsMessengerCreateInfoEXT &createInfo,
-        const VkAllocationCallbacks *pAllocator) -> vk::Result;
-    static void OnDestroy(vk::Instance instance, const VkAllocationCallbacks *pAllocator);
-    static void AddExtensions(InstanceProperties &instanceProperties);
+    static auto Attach(InstanceProperties &instanceProperties, const VkDebugUtilsMessengerCreateInfoEXT &createInfo)
+        -> std::unique_ptr<ExtValidation>;
+    auto OnCreate(vk::Instance instance, const VkAllocationCallbacks *pAllocator) -> vk::Result;
+    void OnDestroy(vk::Instance instance);
+private:
+    const VkAllocationCallbacks *_pAllocator = {};
+    VkDebugUtilsMessengerEXT _debugMessenger = {};
+    VkDebugUtilsMessengerCreateInfoEXT _createInfo = {};
 };
+
+inline std::unique_ptr<ExtValidation> gExtValidation = {};
 
 }    // namespace vkgfx

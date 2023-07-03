@@ -11,6 +11,8 @@ StaticBufferPool::StaticBufferPool() {
 }
 
 auto StaticBufferPool::OnCreate(Device *pDevice, std::size_t totalMemorySize, std::string_view name) -> vk::Result {
+    totalMemorySize = AlignUp<std::size_t>(totalMemorySize, 256);
+
     _totalMemorySize = totalMemorySize;
     _memoryOffset = 0;
 
@@ -18,10 +20,11 @@ auto StaticBufferPool::OnCreate(Device *pDevice, std::size_t totalMemorySize, st
     vk::Device device = pDevice->GetVKDevice();
     VmaAllocator allocator = pDevice->GetAllocator();
 
-    VkBufferCreateInfo bufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = totalMemorySize;
     bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+                       VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;    // preference for CPU
@@ -38,11 +41,11 @@ auto StaticBufferPool::OnCreate(Device *pDevice, std::size_t totalMemorySize, st
     // create upload buffer
     VkBuffer uploadBuffer = nullptr;
     bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    bufferInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    bufferInfo.flags = 0;
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;    // preference for CPU
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    res = vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &staticBuffer, &_uploadBufferAlloc, nullptr);
+    res = vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &uploadBuffer, &_uploadBufferAlloc, nullptr);
     ExceptionAssert(res == VK_SUCCESS);
 
     _uploadBuffer = vk::Buffer(uploadBuffer);
@@ -79,7 +82,7 @@ auto StaticBufferPool::AllocBuffer(size_t numElement, size_t stride, void **pDat
 
     size_t size = AlignUp(numElement * stride, static_cast<size_t>(256));
     // bad allocate
-    if (_memoryOffset + size >= _totalMemorySize) {
+    if (_memoryOffset + size > _totalMemorySize) {
         *pData = nullptr;
         return std::nullopt;
     }
@@ -110,7 +113,7 @@ void StaticBufferPool::UploadData(vk::CommandBuffer cmd, const vk::DescriptorBuf
     region.srcOffset = bufferInfo.offset;
     region.dstOffset = bufferInfo.offset;
     region.size = bufferInfo.range;
-    cmd.copyBuffer(_staticBuffer, _uploadBuffer, region);
+    cmd.copyBuffer(_uploadBuffer, _staticBuffer, region);
 }
 
 void StaticBufferPool::UploadData(vk::CommandBuffer cmd) {
@@ -119,7 +122,7 @@ void StaticBufferPool::UploadData(vk::CommandBuffer cmd) {
     region.srcOffset = 0;
     region.dstOffset = 0;
     region.size = _totalMemorySize;
-    cmd.copyBuffer(_staticBuffer, _uploadBuffer, region);
+    cmd.copyBuffer(_uploadBuffer, _staticBuffer, region);
 }
 
 auto StaticBufferPool::GetAllocatableSize() const -> size_t {

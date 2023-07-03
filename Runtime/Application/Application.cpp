@@ -46,6 +46,40 @@ void Application::Update(std::shared_ptr<GameTimer> pGameTimer) {
 }
 
 void Application::RenderScene() {
+    vkgfx::gCommandBufferRing->OnBeginFrame();
+    vk::CommandBuffer cmd = vkgfx::gCommandBufferRing->GetNewCommandBuffer();
+    vk::CommandBufferBeginInfo beginInfo;
+    cmd.begin(beginInfo);
+
+    vkgfx::gSwapChain->WaitForSwapChain();
+    vk::ClearValue clearColor = {};
+    clearColor.color.float32 = std::array<float, 4>{0.f, 0.f, 0.f, 1.f};
+
+    vk::RenderPassBeginInfo renderPassBeginInfo = vkgfx::gSwapChain->GetRenderPassBeginInfo();
+    renderPassBeginInfo.clearValueCount = 1;
+    renderPassBeginInfo.pClearValues = &clearColor;
+    cmd.beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
+    {
+	    cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
+        cmd.setViewport(0, vkgfx::gSwapChain->GetFullScreenViewport());
+        cmd.setScissor(0, vkgfx::gSwapChain->GetFullScreenScissor());
+        cmd.bindVertexBuffers(0, _triangleBufferInfo.buffer, _triangleBufferInfo.offset);
+        cmd.draw(3, 1, 0, 0);
+    }
+    cmd.endRenderPass();
+
+    cmd.end();
+
+    vk::PipelineStageFlags waitDstMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    vk::SubmitInfo submitInfo;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &vkgfx::gSwapChain->GetImageAvailableSemaphore();
+    submitInfo.pWaitDstStageMask = &waitDstMask;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cmd;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &vkgfx::gCommandBufferRing->GetRenderFinishedSemaphore();
+    vkgfx::gDevice->GetGraphicsQueue().submit(submitInfo, vkgfx::gCommandBufferRing->GetExecutedFinishedFence());
 }
 
 Application::~Application() {
@@ -76,14 +110,14 @@ void Application::SetupVulkan() {
 
     constexpr size_t kNumBackBuffer = 2;
     constexpr size_t kNumCommandBufferPreFrame = 3;
-    vkgfx::gDevice->OnCreate("VulkanAPP", "Vulkan", true, true, _pWindow);
+    vkgfx::gDevice->OnCreate("VulkanAPP", "Vulkan", true, _pWindow);
     vkgfx::gSwapChain->OnCreate(vkgfx::gDevice, kNumBackBuffer);
     vkgfx::gCommandBufferRing->OnCreate(vkgfx::gDevice, kNumBackBuffer, kNumCommandBufferPreFrame);
     vkgfx::gDevice->CreatePipelineCache();
 }
 
 void Application::DestroyVulkan() {
-    vkgfx::gDevice->GPUFlush();
+    vkgfx::gDevice->WaitGPUFlush();
     vkgfx::gDevice->DestroyPipelineCache();
     vkgfx::gCommandBufferRing->OnDestroy();
     vkgfx::gSwapChain->OnDestroy();
@@ -95,30 +129,25 @@ void Application::GlfwErrorCallback(int error, const char *description) {
 }
 
 void Application::Loading() {
-    vk::PipelineShaderStageCreateInfo vertexShaderStageInfo;
-    vk::PipelineShaderStageCreateInfo pixelShaderStageInfo;
-
     vk::Device device = vkgfx::gDevice->GetVKDevice();
 
+    vk::PipelineShaderStageCreateInfo shaderStages[2];
     ShaderLoadInfo loadInfo = {"Assets/Shaders/Triangles.hlsl", "VSMain", vkgfx::ShaderType::kVS, {}};
-    gShaderManager->LoadShaderStageCreateInfo(loadInfo, vertexShaderStageInfo);
+    gShaderManager->LoadShaderStageCreateInfo(loadInfo, shaderStages[0]);
 
     loadInfo.entryPoint = "PSMain";
     loadInfo.shaderType = vkgfx::ShaderType::kPS;
-    gShaderManager->LoadShaderStageCreateInfo(loadInfo, pixelShaderStageInfo);
-
-    vk::PipelineShaderStageCreateInfo shaderStages[] = {vertexShaderStageInfo, pixelShaderStageInfo};
-
+    gShaderManager->LoadShaderStageCreateInfo(loadInfo, shaderStages[1]);
 
     struct Vertex {
-	    glm::vec3 position;
+        glm::vec3 position;
         glm::vec3 color;
     };
 
-    vk::VertexInputBindingDescription bindingDescription;
-    bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(Vertex);
-    bindingDescription.inputRate = vk::VertexInputRate::eVertex;
+    vk::VertexInputBindingDescription bindingDescription[1];
+    bindingDescription[0].binding = 0;
+    bindingDescription[0].stride = sizeof(Vertex);
+    bindingDescription[0].inputRate = vk::VertexInputRate::eVertex;
 
     vk::VertexInputAttributeDescription attributeDescription[2];
     attributeDescription[0].location = 0;
@@ -132,10 +161,10 @@ void Application::Loading() {
     attributeDescription[0].offset = offsetof(Vertex, color);
 
     vk::PipelineVertexInputStateCreateInfo vertexInputCreateInfo;
-    vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
-    vertexInputCreateInfo.pVertexBindingDescriptions = nullptr;
-    vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputCreateInfo.pVertexAttributeDescriptions = nullptr;
+    vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
+    vertexInputCreateInfo.pVertexBindingDescriptions = bindingDescription;
+    vertexInputCreateInfo.vertexAttributeDescriptionCount = 2;
+    vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescription;
 
     vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo;
     rasterizationStateCreateInfo.polygonMode = vk::PolygonMode::eFill;
@@ -157,7 +186,7 @@ void Application::Loading() {
 
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
     pipelineLayoutCreateInfo.setLayoutCount = 0;
-	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     _pipelineLayout = device.createPipelineLayout(pipelineLayoutCreateInfo);
 
     vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
@@ -179,18 +208,17 @@ void Application::Loading() {
     _graphicsPipeline = device.createGraphicsPipeline(nullptr, pipelineCreateInfo).value;
 
     const std::vector<Vertex> vertices = {
-	    {{+0.0f, -0.5f, +0.f}, {1.0f, 0.0f, 0.0f}},
-	    {{+0.5f, +0.5f, +0.f}, {0.0f, 1.0f, 0.0f}},
-	    {{-0.5f, +0.5f, +0.f}, {0.0f, 0.0f, 1.0f}}
+    	{{+0.0f, -0.5f, +0.f}, {1.0f, 0.0f, 0.0f}},
+        {{+0.5f, +0.5f, +0.f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, +0.5f, +0.f}, {0.0f, 0.0f, 1.0f}}
     };
-
 
     constexpr size_t k128MB = 128 * 1024 * 1024;
     _uploadHeap.OnCreate(vkgfx::gDevice, k128MB);
 
     size_t memoryAllocSize = sizeof(Vertex) * vertices.size();
     _vertexBuffer.OnCreate(vkgfx::gDevice, memoryAllocSize, "Triangle Size");
-    _vertexBuffer.AllocBuffer(vertices);
+    _triangleBufferInfo = _vertexBuffer.AllocBuffer(vertices).value();
     _vertexBuffer.UploadData(_uploadHeap.GetCommandBuffer());
     _vertexBuffer.FreeUploadHeap();
     _uploadHeap.Flush();
