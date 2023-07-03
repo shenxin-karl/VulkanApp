@@ -28,7 +28,7 @@ inline bool s_bCanUseDebugUtils = false;
 inline std::mutex s_mutex = {};
 
 Inline(2) bool ExtDebugUtilsCheckInstanceExtensions(InstanceProperties &instanceProperties) {
-    s_bCanUseDebugUtils = instanceProperties.AddInstanceExtensionName("VK_EXT_debug_utils");
+    s_bCanUseDebugUtils = instanceProperties.AddExtension("VK_EXT_debug_utils");
 	return s_bCanUseDebugUtils;	
 }
 

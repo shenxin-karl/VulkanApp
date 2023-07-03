@@ -26,16 +26,17 @@ namespace vkgfx {
 class InstanceProperties {
 public:
     bool Init();
-    bool AddInstanceLayerName(const char *instanceLayerName);
-    bool AddInstanceExtensionName(const char *instanceExtensionName);
+    bool AddLayer(const char *pInstanceLayerName);
+    bool AddExtension(const char *pInstanceExtensionName);
+    bool AddExtension(const std::vector<const char *> &extensions);
     auto GetNext() const -> void * {
         return _pNext;
     }
     void SetNewNext(void *pNext) {
         _pNext = pNext;
     }
-    void GetExtensionNamesAndConfigs(std::vector<const char *> &pInstance_layer_names,
-                                     std::vector<const char *> &pInstance_extension_names) const;
+    void GetLayersAndExtensions(std::vector<const char *> &pInstance_layer_names,
+        std::vector<const char *> &pInstance_extension_names) const;
 private:
     bool IsLayerPresent(const char *pExtName);
     bool IsExtensionPresent(const char *pExtName);

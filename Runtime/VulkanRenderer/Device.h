@@ -15,10 +15,9 @@ public:
     Device();
     ~Device();
     void OnCreate(const char *pAppName,
-        const char *pEngineName,
-        bool cpuValidationLayerEnabled,
-        bool gpuValidationLayerEnabled,
-        GLFWwindow *pWindow);
+                  const char *pEngineName,
+                  bool enableValidationLayers,
+                  GLFWwindow *pWindow);
     void OnDestroy();
     auto GetInstance() const -> vk::Instance;
     auto GetVKDevice() const -> vk::Device;
@@ -39,16 +38,16 @@ public:
     auto GetPipelineCache() const -> vk::PipelineCache;
     void GPUFlush();
 private:
-    void OnCreateEx(const char *pAppName,
-        const char *pEngineName,
-        bool cpuValidationLayerEnabled,
-        bool gpuValidationLayerEnabled,
-        InstanceProperties &instanceProperties,
-        const DeviceProperties &deviceProperties);
-    void CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip);
+    void OnCreateEx(const DeviceProperties &deviceProperties);
+    void CreateInstance(const char *pAppName, const char *pEngineName, const InstanceProperties &ip, bool enableValidationLayers);
     void InitDynamicLoader();
     void InitInstanceExtFunc();
     void InitDeviceExtFunc();
+    static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+        void *pUserData);
+    static auto GetDebugMessengerCreateInfo() -> VkDebugUtilsMessengerCreateInfoEXT;
 private:
     vk::Instance _instance;
     vk::Device _device;
@@ -69,7 +68,6 @@ private:
     VmaAllocator _hAllocator = nullptr;
     vk::PipelineCache _pipelineCache;
 };
-
 
 inline RuntimeStatic<Device> gDevice;
 

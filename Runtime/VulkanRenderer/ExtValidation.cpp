@@ -1,106 +1,43 @@
-// AMD Cauldron code
-//
-// Copyright(c) 2018 Advanced Micro Devices, Inc.All rights reserved.
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files(the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions :
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
 #include <vulkan/vulkan.h>
-#include <Windows.h>
-#include <vulkan/vulkan_win32.h>
 #include "InstanceProperties.h"
 #include "ExtValidation.h"
-#include "Foundation/Exception.h"
-#include "Foundation/Logger.h"
 
 namespace vkgfx {
 
-static PFN_vkCreateDebugReportCallbackEXT gVkCreateDebugReportCallbackEXT = NULL;
-static PFN_vkDebugReportMessageEXT gVkDebugReportMessageEXT = NULL;
-static PFN_vkDestroyDebugReportCallbackEXT gVkDestroyDebugReportCallbackEXT = NULL;
-static VkDebugReportCallbackEXT gDebugReportCallback = NULL;
-static bool sBCanUseDebugReport = false;
+static VkDebugUtilsMessengerEXT *sDebugMessenger = nullptr;
+static bool sIsExtSupported = false;
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL MyDebugReportCallback(VkDebugReportFlagsEXT flags,
-                                                            VkDebugReportObjectTypeEXT objectType,
-                                                            uint64_t object,
-                                                            size_t location,
-                                                            int32_t messageCode,
-                                                            const char *pLayerPrefix,
-                                                            const char *pMessage,
-                                                            void *pUserData) {
-    //Logger::Error(pMessage);
-}
+auto ExtDebugMessenger::OnCreate(vk::Instance instance,
+    const VkDebugUtilsMessengerCreateInfoEXT &createInfo,
+    const VkAllocationCallbacks *pAllocator) -> vk::Result {
 
-const VkValidationFeatureEnableEXT featuresRequested[] = {
-    VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT,
-    VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT,
-    VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT};
-VkValidationFeaturesEXT features = {};
-
-constexpr char s_pInstanceExtensionName[] = VK_EXT_DEBUG_REPORT_EXTENSION_NAME;
-constexpr char s_pInstanceLayerName[] = "VK_LAYER_KHRONOS_validation";
-
-bool ExtDebugReportCheckInstanceExtensions(InstanceProperties *pIP, bool gpuValidation) {
-    sBCanUseDebugReport = pIP->AddInstanceLayerName(s_pInstanceLayerName) &&
-                          pIP->AddInstanceExtensionName(s_pInstanceExtensionName);
-    if (sBCanUseDebugReport && gpuValidation) {
-        features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-        features.pNext = pIP->GetNext();
-        features.enabledValidationFeatureCount =
-            static_cast<uint32_t>(std::size(featuresRequested));
-        features.pEnabledValidationFeatures = featuresRequested;
-        pIP->SetNewNext(&features);
+    PFN_vkCreateDebugUtilsMessengerEXT func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
+        vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
+    if (func != nullptr) {
+        return static_cast<vk::Result>(func(instance, &createInfo, pAllocator, sDebugMessenger));
     }
-    return sBCanUseDebugReport;
+    return vk::Result::eErrorExtensionNotPresent;
 }
 
-void ExtDebugReportGetProcAddresses(vk::Instance instance) {
-    if (sBCanUseDebugReport) {
-        gVkCreateDebugReportCallbackEXT = reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>(
-            vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT"));
-        gVkDebugReportMessageEXT = reinterpret_cast<PFN_vkDebugReportMessageEXT>(
-            vkGetInstanceProcAddr(instance, "vkDebugReportMessageEXT"));
-        gVkDestroyDebugReportCallbackEXT = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(
-            vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"));
-        ExceptionAssert(gVkCreateDebugReportCallbackEXT);
-        ExceptionAssert(gVkDebugReportMessageEXT);
-        ExceptionAssert(gVkDestroyDebugReportCallbackEXT);
+void ExtDebugMessenger::OnDestroy(vk::Instance instance, const VkAllocationCallbacks *pAllocator) {
+	PFN_vkDestroyDebugUtilsMessengerEXT func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+		vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
+    if (func != nullptr) {
+        func(instance, *sDebugMessenger, pAllocator);
     }
+    sDebugMessenger = VK_NULL_HANDLE;
 }
 
-void ExtDebugReportOnCreate(vk::Instance instance) {
-    if (gVkCreateDebugReportCallbackEXT) {
-        VkDebugReportCallbackCreateInfoEXT debugReportCallbackInfo = {
-            VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT};
-        debugReportCallbackInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
-                                        VK_DEBUG_REPORT_WARNING_BIT_EXT |
-                                        VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-        debugReportCallbackInfo.pfnCallback = MyDebugReportCallback;
-        VkResult res = gVkCreateDebugReportCallbackEXT(instance,
-                                                       &debugReportCallbackInfo,
-                                                       nullptr,
-                                                       &gDebugReportCallback);
-        assert(res == VK_SUCCESS);
-    }
+void ExtDebugMessenger::AddLayers(InstanceProperties &instanceProperties) {
+    sIsExtSupported = instanceProperties.AddLayer("VK_LAYER_KHRONOS_validation");
 }
 
-void ExtDebugReportOnDestroy(vk::Instance instance) {
-    // It should happen after destroing device, before destroying instance.
-    if (gDebugReportCallback) {
-        gVkDestroyDebugReportCallbackEXT(instance, gDebugReportCallback, nullptr);
-        gDebugReportCallback = nullptr;
-    }
+bool ExtDebugMessenger::IsSupported() {
+    return sIsExtSupported;
 }
+
+bool ExtDebugMessenger::IsLoaded() {
+    return sDebugMessenger != nullptr;
+}
+
 }    // namespace vkgfx

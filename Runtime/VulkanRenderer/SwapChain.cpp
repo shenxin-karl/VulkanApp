@@ -128,88 +128,39 @@ void SwapChain::DestroyRTV() {
 }
 
 void SwapChain::CreateRenderPass() {
-    //vk::AttachmentDescription attachments[1];
-    //attachments[0].format = _swapChainFormat.format;
-    //attachments[0].samples = vk::SampleCountFlagBits::e1;
-    //attachments[0].loadOp = vk::AttachmentLoadOp::eDontCare;
-    //attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
-    //attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-    //attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-    //attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
-    //attachments[0].flags = {};
+    vk::AttachmentDescription attachments[1];
+    attachments[0].format = _swapChainFormat.format;
+    attachments[0].samples = vk::SampleCountFlagBits::e1;
+    attachments[0].loadOp = vk::AttachmentLoadOp::eDontCare;
+    attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
+    attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
+    attachments[0].flags = {};
 
-    //vk::AttachmentReference colorReference;
-    //colorReference.attachment = 0;
-    //colorReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
+    vk::AttachmentReference colorReference;
+    colorReference.attachment = 0;
+    colorReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
 
-    //vk::SubpassDescription subpass;
-    //subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-    //subpass.colorAttachmentCount = 1;
-    //subpass.pColorAttachments = &colorReference;
+    vk::SubpassDescription subpass;
+    subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorReference;
 
-    //vk::SubpassDependency dep;
-    //dep.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-    //dep.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    //dep.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    //dep.dstSubpass = VK_SUBPASS_EXTERNAL;
+    vk::SubpassDependency dep;
+    dep.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+    dep.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    dep.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    dep.dstSubpass = VK_SUBPASS_EXTERNAL;
 
-    //vk::RenderPassCreateInfo renderPassCreateInfo;
-    //renderPassCreateInfo.attachmentCount = 1;
-    //renderPassCreateInfo.pAttachments = attachments;
-    //renderPassCreateInfo.subpassCount = 1;
-    //renderPassCreateInfo.pSubpasses = &subpass;
-    //renderPassCreateInfo.dependencyCount = 1;
-    //renderPassCreateInfo.pDependencies = &dep;
-    //_renderPass = GetDevice()->GetVKDevice().createRenderPass(renderPassCreateInfo);
-
-         // color RT
-        VkAttachmentDescription attachments[1];
-        attachments[0].format = (VkFormat)_swapChainFormat.format;
-        attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        attachments[0].flags = 0;
-
-        VkAttachmentReference color_reference = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
-
-        VkSubpassDescription subpass = {};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.flags = 0;
-        subpass.inputAttachmentCount = 0;
-        subpass.pInputAttachments = NULL;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &color_reference;
-        subpass.pResolveAttachments = NULL;
-        subpass.pDepthStencilAttachment = NULL;
-        subpass.preserveAttachmentCount = 0;
-        subpass.pPreserveAttachments = NULL;
-
-        VkSubpassDependency dep = {};
-        dep.dependencyFlags = 0;
-        dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dep.dstSubpass = 0;
-        dep.srcAccessMask = 0;
-        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dep.srcSubpass = VK_SUBPASS_EXTERNAL;
-
-        VkRenderPassCreateInfo rp_info = {};
-        rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rp_info.pNext = NULL;
-        rp_info.attachmentCount = 1;
-        rp_info.pAttachments = attachments;
-        rp_info.subpassCount = 1;
-        rp_info.pSubpasses = &subpass;
-        rp_info.dependencyCount = 1;
-        rp_info.pDependencies = &dep;
-
-        VkRenderPass m_render_pass_swap_chain = VK_NULL_HANDLE;
-        VkResult res = vkCreateRenderPass(GetDevice()->GetVKDevice(), &rp_info, NULL, &m_render_pass_swap_chain);
-        assert(res == VK_SUCCESS);
+    vk::RenderPassCreateInfo renderPassCreateInfo;
+    renderPassCreateInfo.attachmentCount = 1;
+    renderPassCreateInfo.pAttachments = attachments;
+    renderPassCreateInfo.subpassCount = 1;
+    renderPassCreateInfo.pSubpasses = &subpass;
+    renderPassCreateInfo.dependencyCount = 1;
+    renderPassCreateInfo.pDependencies = &dep;
+    _renderPass = GetDevice()->GetVKDevice().createRenderPass(renderPassCreateInfo);
 }
 
 void SwapChain::DestroyRenderPass() {
