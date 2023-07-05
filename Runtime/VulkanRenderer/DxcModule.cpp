@@ -3,14 +3,14 @@
 
 namespace vkgfx {
 
-void DxcModule::Initialize() {
+void DxcModule::OnCreate() {
 	DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&_pCompiler));
 	DxcCreateInstance(CLSID_DxcLinker, IID_PPV_ARGS(&_pLinker));
 	DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&_pUtils));
 	DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&_pLibrary));
 }
 
-void DxcModule::Destroy() {
+void DxcModule::OnDestroy() {
 	_pUtils = nullptr;
 	_pLinker = nullptr;
 	_pLibrary = nullptr;

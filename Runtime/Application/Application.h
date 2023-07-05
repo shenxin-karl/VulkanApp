@@ -15,8 +15,10 @@ public:
     void Startup() override;
     void Cleanup() override;
     bool IsDone() const override;
+    bool IsPause() const override;
+    void PollEvents() override;
     void Update(std::shared_ptr<GameTimer> pGameTimer) override;
-    void RenderScene() override;
+    void RenderScene(std::shared_ptr<GameTimer> pGameTimer) override;
     void OnResize();
     ~Application() override;
 public:
@@ -27,7 +29,9 @@ public:
     void Loading();
     static void GlfwErrorCallback(int error, const char *description);
     static void FrameBufferResizeCallback(GLFWwindow *pWindow, int width, int height);
+    static void WindowMinimizeCallback(GLFWwindow *pWindow, int minimized);
 private:
+    bool _pause = false;
     bool _needResize = true;
     GLFWwindow *_pWindow = nullptr;
     uint32_t _width = 0;

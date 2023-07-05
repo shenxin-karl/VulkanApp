@@ -3,7 +3,6 @@
 #include <Windows.h>
 #include <wrl/client.h>
 #include <dxcapi.h>
-
 #include "EnumDefinition.h"
 #include "Foundation/CompileEnvInfo.hpp"
 #include "Foundation/NamespeceAlias.h"

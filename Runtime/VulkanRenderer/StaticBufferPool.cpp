@@ -107,22 +107,22 @@ auto StaticBufferPool::AllocBuffer(size_t numElement, size_t stride, const void 
     return info;
 }
 
-void StaticBufferPool::UploadData(vk::CommandBuffer cmd, const vk::DescriptorBufferInfo &bufferInfo) {
+void StaticBufferPool::UploadData(const UploadHeap &uploadHeap, const vk::DescriptorBufferInfo &bufferInfo) {
     ExceptionAssert(_uploadBuffer);
     vk::BufferCopy region;
     region.srcOffset = bufferInfo.offset;
     region.dstOffset = bufferInfo.offset;
     region.size = bufferInfo.range;
-    cmd.copyBuffer(_uploadBuffer, _staticBuffer, region);
+    uploadHeap.GetCommandBuffer().copyBuffer(_uploadBuffer, _staticBuffer, region);
 }
 
-void StaticBufferPool::UploadData(vk::CommandBuffer cmd) {
+void StaticBufferPool::UploadData(const UploadHeap &uploadHeap) {
     ExceptionAssert(_uploadBuffer);
     vk::BufferCopy region;
     region.srcOffset = 0;
     region.dstOffset = 0;
     region.size = _totalMemorySize;
-    cmd.copyBuffer(_uploadBuffer, _staticBuffer, region);
+    uploadHeap.GetCommandBuffer().copyBuffer(_uploadBuffer, _staticBuffer, region);
 }
 
 auto StaticBufferPool::GetAllocatableSize() const -> size_t {

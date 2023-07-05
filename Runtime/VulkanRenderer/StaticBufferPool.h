@@ -2,6 +2,7 @@
 #include <vulkan/vulkan.hpp>
 #include <vk_mem_alloc.h>
 #include <span>
+#include "UploadHeap.h"
 #include "VKObject.h"
 
 namespace vkgfx {
@@ -14,8 +15,8 @@ public:
     void OnDestroy();
     auto AllocBuffer(size_t numElement, size_t stride, void **pData) -> std::optional<vk::DescriptorBufferInfo>;
     auto AllocBuffer(size_t numElement, size_t stride, const void *pInitData) -> std::optional<vk::DescriptorBufferInfo>;
-    void UploadData(vk::CommandBuffer cmd, const vk::DescriptorBufferInfo &bufferInfo);
-    void UploadData(vk::CommandBuffer cmd);
+    void UploadData(const UploadHeap &uploadHeap, const vk::DescriptorBufferInfo &bufferInfo);
+    void UploadData(const UploadHeap &uploadHeap);
     auto GetAllocatableSize() const -> size_t;
     void FreeUploadHeap();
 

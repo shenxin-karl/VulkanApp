@@ -74,3 +74,11 @@ float GameTimer::GetMSPF() const {
 	return 1000.f / static_cast<float>(GetFPS());
 }
 
+bool GameTimer::IsStopped() const {
+	return _stopped;
+}
+
+bool GameTimer::IsStarted() const {
+	return !_stopped;
+}
+

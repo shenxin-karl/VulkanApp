@@ -24,7 +24,7 @@ Application::Application() {
 void Application::Startup() {
     gLogger->Initialize();
     gAssetProjectSetting->Initialize();
-    vkgfx::gDxcModule->Initialize();
+    vkgfx::gDxcModule->OnCreate();
     gShaderManager->Initialize();
 
     gLogger->StartLogging();
@@ -35,7 +35,7 @@ void Application::Startup() {
 
 void Application::Cleanup() {
     gShaderManager->Destroy();
-    vkgfx::gDxcModule->Destroy();
+    vkgfx::gDxcModule->OnDestroy();
     gAssetProjectSetting->Destroy();
     gLogger->Destroy();
 
@@ -47,15 +47,26 @@ bool Application::IsDone() const {
     return glfwWindowShouldClose(_pWindow);
 }
 
-void Application::Update(std::shared_ptr<GameTimer> pGameTimer) {
+bool Application::IsPause() const {
+    return _pause;
+}
+
+void Application::PollEvents() {
     glfwPollEvents();
+    if (_pause) {
+	    return;
+    }
     if (_needResize) {
         _needResize = false;
         OnResize();
     }
 }
 
-void Application::RenderScene() {
+void Application::Update(std::shared_ptr<GameTimer> pGameTimer) {
+ 
+}
+
+void Application::RenderScene(std::shared_ptr<GameTimer> pGameTimer) {
     _graphicsCmdRing.OnBeginFrame();
     vk::CommandBuffer cmd = _graphicsCmdRing.GetNewCommandBuffer();
     vk::CommandBufferBeginInfo beginInfo;
@@ -145,7 +156,7 @@ void Application::OnResize() {
     rasterizationStateCreateInfo.cullMode = vk::CullModeFlagBits::eBack;
     rasterizationStateCreateInfo.frontFace = vk::FrontFace::eClockwise;
     rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
-    rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_TRUE;
+    rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
     rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
     rasterizationStateCreateInfo.depthBiasConstantFactor = 0;
     rasterizationStateCreateInfo.depthBiasClamp = 0;
@@ -197,6 +208,7 @@ void Application::SetupGlfw() {
     _pWindow = glfwCreateWindow(_width, _height, "Vulkan App", nullptr, nullptr);
     glfwSetWindowUserPointer(_pWindow, this);
     glfwSetFramebufferSizeCallback(_pWindow, FrameBufferResizeCallback);
+    glfwSetWindowIconifyCallback(_pWindow, WindowMinimizeCallback);
 }
 
 void Application::DestroyGlfw() {
@@ -241,6 +253,11 @@ void Application::FrameBufferResizeCallback(GLFWwindow *pWindow, int width, int 
     }
 }
 
+void Application::WindowMinimizeCallback(GLFWwindow *pWindow, int minimized) {
+    Application *pApplication = static_cast<Application *>(glfwGetWindowUserPointer(pWindow));
+    pApplication->_pause = minimized;
+}
+
 void Application::Loading() {
     const std::vector<Vertex> vertices = {
     	{{+0.0f, -0.5f, +0.f}, {1.0f, 0.0f, 0.0f}},
@@ -254,7 +271,7 @@ void Application::Loading() {
     size_t memoryAllocSize = sizeof(Vertex) * vertices.size();
     _vertexBuffer.OnCreate(vkgfx::gDevice, memoryAllocSize, "Triangle Size");
     _triangleBufferInfo = _vertexBuffer.AllocBuffer(vertices).value();
-    _vertexBuffer.UploadData(_uploadHeap.GetCommandBuffer());
+    _vertexBuffer.UploadData(_uploadHeap);
     _vertexBuffer.FreeUploadHeap();
     _uploadHeap.Flush();
 }

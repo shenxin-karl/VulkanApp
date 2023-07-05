@@ -12,6 +12,8 @@ public:
 	auto GetDeltaTime() const -> float;
 	auto GetFPS() const -> std::uint32_t;
 	auto GetMSPF() const -> float;
+	bool IsStopped() const;
+	bool IsStarted() const;
 private:
 	using time_point = std::chrono::steady_clock::time_point;
 	time_point		_baseTime;

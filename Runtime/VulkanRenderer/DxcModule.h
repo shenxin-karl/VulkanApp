@@ -9,8 +9,8 @@ namespace vkgfx {
 
 class DxcModule : public NonCopyable {
 public:
-    void Initialize();
-    void Destroy();
+    void OnCreate();
+    void OnDestroy();
     auto GetCompiler3() const -> IDxcCompiler3 *;
     auto GetLinker() const -> IDxcLinker *;
     auto GetUtils() const -> IDxcUtils *;
