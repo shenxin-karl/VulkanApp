@@ -1,5 +1,6 @@
 #include "CommandBufferRing.h"
 #include "Device.h"
+#include "ExtDebugUtils.h"
 #include "VKException.h"
 #include "Foundation/Exception.h"
 
@@ -32,12 +33,26 @@ void CommandBufferRing::OnCreate(Device *pDevice,
 
     vk::SemaphoreCreateInfo semaphoreCreateInfo;
 
-    for (auto &frame : _frameCommandBuffers) {
+    std::string name = compute ? "ComputeCommandBufferRing" : "GraphicsCommandBufferRing;";
+    for (size_t i = 0; i < numberFrameOfBackBuffers; ++i) {
+        CommandBuffersPreFrame &frame = _frameCommandBuffers[i];
         frame.commandPool = device.createCommandPool(commandPoolCreateInfo);
         cmdCreateInfo.commandPool = frame.commandPool;
         frame.commandBuffers = device.allocateCommandBuffers(cmdCreateInfo);
         frame.executedFinishedFence = device.createFence(fenceCreateInfo);
         frame.renderFinishedSemaphore = device.createSemaphore(semaphoreCreateInfo);
+
+        std::string commandPoolName = fmt::format("{}_frame{}_CommandPool", name, i);
+        std::string fenceName = fmt::format("{}_frame{}_executedFinishedFence", name, i);
+        std::string semaphoreName = fmt::format("{}_frame{}_renderFinishedSemaphore", name, i);
+
+        SetResourceName(device, frame.commandPool, commandPoolName);
+        SetResourceName(device, frame.executedFinishedFence, fenceName);
+        SetResourceName(device, frame.renderFinishedSemaphore, semaphoreName);
+        for (size_t j = 0; j < commandBufferPreFrame; ++j) {
+            std::string cmdName = fmt::format("{}_frame{}_CommandBuffer{}", name, i, j);
+            SetResourceName(device, frame.commandBuffers[i], cmdName);
+        }
     }
 
     SetIsCreate(true);
@@ -50,6 +65,7 @@ void CommandBufferRing::OnDestroy() {
         device.freeCommandBuffers(frame.commandPool, frame.commandBuffers);
         device.destroyCommandPool(frame.commandPool);
         device.destroyFence(frame.executedFinishedFence);
+        device.destroySemaphore(frame.renderFinishedSemaphore);
     }
     _frameCommandBuffers.clear();
     SetIsCreate(false);
@@ -66,7 +82,7 @@ void CommandBufferRing::OnBeginFrame() {
 }
 
 auto CommandBufferRing::GetNewCommandBuffer() -> vk::CommandBuffer {
-	CommandBuffersPreFrame &currentFrame = _frameCommandBuffers[_frameIndex];
+    CommandBuffersPreFrame &currentFrame = _frameCommandBuffers[_frameIndex];
     ExceptionAssert(currentFrame.currentAllocateIndex <= _commandBufferPreBackBuffer);
     return currentFrame.commandBuffers[currentFrame.currentAllocateIndex++];
 }
@@ -83,17 +99,12 @@ auto CommandBufferRing::GetRenderFinishedSemaphore() const -> const vk::Semaphor
     return _frameCommandBuffers[_frameIndex].renderFinishedSemaphore;
 }
 
-void CommandBufferRing::WaitForRenderFinished() {
-    vk::Device device = GetDevice()->GetVKDevice();
-	uint32_t targetFrameIndex = _frameIndex + _numberFrameOfAllocators;
-    for (uint32_t i = _frameIndex; i < targetFrameIndex; ++i) {
-	    uint32_t index = i % _numberFrameOfAllocators;
-		CommandBuffersPreFrame &currentFrame = _frameCommandBuffers[index];
-		VKException::Throw(device.waitForFences(1, &currentFrame.executedFinishedFence, VK_TRUE, UINT64_MAX));
-		//VKException::Throw(device.resetFences(1, &currentFrame.executedFinishedFence));
+void CommandBufferRing::WaitForRenderFinished(vk::Queue queue) {
+    queue.waitIdle();
+    _frameIndex = 0;
+    for (CommandBuffersPreFrame &currentFrame : _frameCommandBuffers) {
         currentFrame.currentAllocateIndex = 0;
     }
-    _frameIndex = 0;
 }
 
 }    // namespace vkgfx

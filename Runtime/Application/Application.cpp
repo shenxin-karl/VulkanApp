@@ -10,7 +10,13 @@
 #include <imgui.h>
 #include <glm/glm.hpp>
 
+#include "VulkanRenderer/ExtDebugUtils.h"
 #include "VulkanRenderer/Utils.hpp"
+
+struct Vertex {
+    glm::vec3 position;
+    glm::vec3 color;
+};
 
 Application::Application() {
 }
@@ -24,7 +30,6 @@ void Application::Startup() {
     gLogger->StartLogging();
     SetupGlfw();
     SetupVulkan();
-
     Loading();
 }
 
@@ -39,34 +44,41 @@ void Application::Cleanup() {
 }
 
 bool Application::IsDone() const {
-    return true;
+    return glfwWindowShouldClose(_pWindow);
 }
 
 void Application::Update(std::shared_ptr<GameTimer> pGameTimer) {
+    glfwPollEvents();
+    if (_needResize) {
+        _needResize = false;
+        OnResize();
+    }
 }
 
 void Application::RenderScene() {
-    vkgfx::gCommandBufferRing->OnBeginFrame();
-    vk::CommandBuffer cmd = vkgfx::gCommandBufferRing->GetNewCommandBuffer();
+    _graphicsCmdRing.OnBeginFrame();
+    vk::CommandBuffer cmd = _graphicsCmdRing.GetNewCommandBuffer();
     vk::CommandBufferBeginInfo beginInfo;
     cmd.begin(beginInfo);
 
     vkgfx::gSwapChain->WaitForSwapChain();
-    vk::ClearValue clearColor = {};
-    clearColor.color.float32 = std::array<float, 4>{0.f, 0.f, 0.f, 1.f};
 
-    vk::RenderPassBeginInfo renderPassBeginInfo = vkgfx::gSwapChain->GetRenderPassBeginInfo();
-    renderPassBeginInfo.clearValueCount = 1;
-    renderPassBeginInfo.pClearValues = &clearColor;
-    cmd.beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
-    {
-	    cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
-        cmd.setViewport(0, vkgfx::gSwapChain->GetFullScreenViewport());
-        cmd.setScissor(0, vkgfx::gSwapChain->GetFullScreenScissor());
+    cmd.setViewport(0, vkgfx::gSwapChain->GetFullScreenViewport());
+    cmd.setScissor(0, vkgfx::gSwapChain->GetFullScreenScissor());
+
+	if (vkgfx::PrefMarkerGuard profile(cmd, "OpaquePass"); profile.Sample()) {
+        vk::ClearValue clearColor = {};
+	    clearColor.color.float32 = std::array{0.f, 0.f, 0.f, 1.f};
+
+	    vk::RenderPassBeginInfo renderPassBeginInfo = vkgfx::gSwapChain->GetRenderPassBeginInfo();
+	    renderPassBeginInfo.clearValueCount = 1;
+	    renderPassBeginInfo.pClearValues = &clearColor;
+        cmd.beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
+        cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
         cmd.bindVertexBuffers(0, _triangleBufferInfo.buffer, _triangleBufferInfo.offset);
         cmd.draw(3, 1, 0, 0);
+        cmd.endRenderPass();
     }
-    cmd.endRenderPass();
 
     cmd.end();
 
@@ -78,58 +90,25 @@ void Application::RenderScene() {
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &cmd;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &vkgfx::gCommandBufferRing->GetRenderFinishedSemaphore();
-    vkgfx::gDevice->GetGraphicsQueue().submit(submitInfo, vkgfx::gCommandBufferRing->GetExecutedFinishedFence());
+    submitInfo.pSignalSemaphores = &_graphicsCmdRing.GetRenderFinishedSemaphore();
+    vkgfx::gDevice->GetGraphicsQueue().submit(submitInfo, _graphicsCmdRing.GetExecutedFinishedFence());
+    vkgfx::gSwapChain->Present(_graphicsCmdRing.GetRenderFinishedSemaphore());
 }
 
-Application::~Application() {
-}
+void Application::OnResize() {
+    _graphicsCmdRing.WaitForRenderFinished(vkgfx::gDevice->GetGraphicsQueue());
 
-void Application::SetupGlfw() {
-    glfwSetErrorCallback(GlfwErrorCallback);
-    if (!glfwInit()) {
-        Exception::Throw("glfwInit error");
-    }
+    vkgfx::gSwapChain->Resize(_width, _height, false);
 
-    int width = 1280;
-    int height = 720;
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    _pWindow = glfwCreateWindow(width, height, "Vulkan App", nullptr, nullptr);
-}
-
-void Application::DestroyGlfw() {
-    glfwDestroyWindow(_pWindow);
-    _pWindow = nullptr;
-    glfwTerminate();
-}
-
-void Application::SetupVulkan() {
-    if (!glfwVulkanSupported()) {
-        Exception::Throw("GLFW Vulkan Not Supported");
-    }
-
-    constexpr size_t kNumBackBuffer = 2;
-    constexpr size_t kNumCommandBufferPreFrame = 3;
-    vkgfx::gDevice->OnCreate("VulkanAPP", "Vulkan", true, _pWindow);
-    vkgfx::gSwapChain->OnCreate(vkgfx::gDevice, kNumBackBuffer);
-    vkgfx::gCommandBufferRing->OnCreate(vkgfx::gDevice, kNumBackBuffer, kNumCommandBufferPreFrame);
-    vkgfx::gDevice->CreatePipelineCache();
-}
-
-void Application::DestroyVulkan() {
-    vkgfx::gDevice->WaitGPUFlush();
-    vkgfx::gDevice->DestroyPipelineCache();
-    vkgfx::gCommandBufferRing->OnDestroy();
-    vkgfx::gSwapChain->OnDestroy();
-    vkgfx::gDevice->OnDestroy();
-}
-
-void Application::GlfwErrorCallback(int error, const char *description) {
-    gLogger->Error("GLFW Error {}: {}", error, description);
-}
-
-void Application::Loading() {
     vk::Device device = vkgfx::gDevice->GetVKDevice();
+    if (_graphicsPipeline) {
+	    device.destroyPipeline(_graphicsPipeline);
+        _graphicsPipeline = VK_NULL_HANDLE;
+    }
+    if (_pipelineLayout) {
+	    device.destroyPipelineLayout(_pipelineLayout);
+        _pipelineLayout = VK_NULL_HANDLE;
+    }
 
     vk::PipelineShaderStageCreateInfo shaderStages[2];
     ShaderLoadInfo loadInfo = {"Assets/Shaders/Triangles.hlsl", "VSMain", vkgfx::ShaderType::kVS, {}};
@@ -138,11 +117,6 @@ void Application::Loading() {
     loadInfo.entryPoint = "PSMain";
     loadInfo.shaderType = vkgfx::ShaderType::kPS;
     gShaderManager->LoadShaderStageCreateInfo(loadInfo, shaderStages[1]);
-
-    struct Vertex {
-        glm::vec3 position;
-        glm::vec3 color;
-    };
 
     vk::VertexInputBindingDescription bindingDescription[1];
     bindingDescription[0].binding = 0;
@@ -158,7 +132,7 @@ void Application::Loading() {
     attributeDescription[1].location = 1;
     attributeDescription[1].binding = 0;
     attributeDescription[1].format = vk::Format::eR32G32B32Sfloat;
-    attributeDescription[0].offset = offsetof(Vertex, color);
+    attributeDescription[1].offset = offsetof(Vertex, color);
 
     vk::PipelineVertexInputStateCreateInfo vertexInputCreateInfo;
     vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
@@ -206,7 +180,68 @@ void Application::Loading() {
     pipelineCreateInfo.basePipelineHandle = nullptr;
     pipelineCreateInfo.basePipelineIndex = -1;
     _graphicsPipeline = device.createGraphicsPipeline(nullptr, pipelineCreateInfo).value;
+}
 
+Application::~Application() {
+}
+
+void Application::SetupGlfw() {
+    glfwSetErrorCallback(GlfwErrorCallback);
+    if (!glfwInit()) {
+        Exception::Throw("glfwInit error");
+    }
+
+    _width = 1280;
+    _height = 720;
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    _pWindow = glfwCreateWindow(_width, _height, "Vulkan App", nullptr, nullptr);
+    glfwSetWindowUserPointer(_pWindow, this);
+    glfwSetFramebufferSizeCallback(_pWindow, FrameBufferResizeCallback);
+}
+
+void Application::DestroyGlfw() {
+    glfwDestroyWindow(_pWindow);
+    _pWindow = nullptr;
+    glfwTerminate();
+}
+
+void Application::SetupVulkan() {
+    if (!glfwVulkanSupported()) {
+        Exception::Throw("GLFW Vulkan Not Supported");
+    }
+
+    constexpr size_t kNumBackBuffer = 2;
+    constexpr size_t kNumCommandBufferPreFrame = 3;
+    vkgfx::gDevice->OnCreate("VulkanAPP", "Vulkan", true, _pWindow);
+    vkgfx::gSwapChain->OnCreate(vkgfx::gDevice, kNumBackBuffer);
+    _graphicsCmdRing.OnCreate(vkgfx::gDevice, kNumBackBuffer, kNumCommandBufferPreFrame);
+    vkgfx::gDevice->CreatePipelineCache();
+}
+
+void Application::DestroyVulkan() {
+    vkgfx::gDevice->WaitGPUFlush();
+    vkgfx::gDevice->DestroyPipelineCache();
+    _graphicsCmdRing.OnDestroy();
+    _vertexBuffer.OnDestroy();
+    _uploadHeap.OnDestroy();
+    vkgfx::gSwapChain->OnDestroy();
+    vkgfx::gDevice->OnDestroy();
+}
+
+void Application::GlfwErrorCallback(int error, const char *description) {
+    gLogger->Error("GLFW Error {}: {}", error, description);
+}
+
+void Application::FrameBufferResizeCallback(GLFWwindow *pWindow, int width, int height) {
+    Application *pApplication = static_cast<Application *>(glfwGetWindowUserPointer(pWindow));
+    if (pApplication->_width != width || pApplication->_height != height) {
+        pApplication->_width = width;
+        pApplication->_height = height;
+        pApplication->_needResize = true;
+    }
+}
+
+void Application::Loading() {
     const std::vector<Vertex> vertices = {
     	{{+0.0f, -0.5f, +0.f}, {1.0f, 0.0f, 0.0f}},
         {{+0.5f, +0.5f, +0.f}, {0.0f, 1.0f, 0.0f}},

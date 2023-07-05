@@ -7,6 +7,7 @@
 #include "VulkanRenderer/Device.h"
 #include "VulkanRenderer/StaticBufferPool.h"
 #include "VulkanRenderer/UploadHeap.h"
+#include "VulkanRenderer/CommandBufferRing.h"
 
 class Application : public IApplication {
 public:
@@ -16,22 +17,27 @@ public:
     bool IsDone() const override;
     void Update(std::shared_ptr<GameTimer> pGameTimer) override;
     void RenderScene() override;
+    void OnResize();
     ~Application() override;
 public:
     void SetupGlfw();
     void DestroyGlfw();
     void SetupVulkan();
     void DestroyVulkan();
-    static void GlfwErrorCallback(int error, const char *description);
     void Loading();
+    static void GlfwErrorCallback(int error, const char *description);
+    static void FrameBufferResizeCallback(GLFWwindow *pWindow, int width, int height);
 private:
-    bool _isDone = false;
+    bool _needResize = true;
     GLFWwindow *_pWindow = nullptr;
+    uint32_t _width = 0;
+    uint32_t _height = 0;
+private:
+    vkgfx::CommandBufferRing _graphicsCmdRing;
 private:
     vk::Pipeline _graphicsPipeline;
+    vkgfx::UploadHeap _uploadHeap;
     vk::PipelineLayout _pipelineLayout;
     vkgfx::StaticBufferPool _vertexBuffer;
-    vkgfx::UploadHeap _uploadHeap;
-
     vk::DescriptorBufferInfo _triangleBufferInfo = {};
 };

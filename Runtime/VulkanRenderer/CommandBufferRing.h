@@ -19,7 +19,7 @@ public:
     auto GetCommandPool() const -> vk::CommandPool;
     auto GetExecutedFinishedFence() const -> vk::Fence;
     auto GetRenderFinishedSemaphore() const -> const vk::Semaphore &;
-    void WaitForRenderFinished();
+    void WaitForRenderFinished(vk::Queue queue);
 private:
     struct CommandBuffersPreFrame {
         size_t currentAllocateIndex = 0;
@@ -34,7 +34,5 @@ private:
     uint32_t _commandBufferPreBackBuffer = 0;
     std::vector<CommandBuffersPreFrame> _frameCommandBuffers;
 };
-
-inline RuntimeStatic<CommandBufferRing> gCommandBufferRing;
 
 }    // namespace vkgfx

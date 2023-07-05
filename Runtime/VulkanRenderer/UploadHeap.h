@@ -18,7 +18,7 @@ public:
     void OnCreate(Device *pDevice, size_t size);
     void OnDestroy();
     auto AllocBuffer(size_t size, size_t align) -> uint8_t *;
-    void AddJob(const ImageUploadJob &job);
+    void AddBarrierJob(const ImageUploadJob &job);
     void Flush();
     auto GetAllocatableSize(size_t align = 0) const -> size_t;
 

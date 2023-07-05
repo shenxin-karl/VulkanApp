@@ -41,6 +41,10 @@ public:
             gExtDebugUtils->SetPrefMarkerEnd(_cmd);
         }
     }
+
+    static bool Sample() noexcept {
+	    return true;
+    }
 private:
     vk::CommandBuffer _cmd;
 };

@@ -262,8 +262,8 @@ void Device::OnCreateEx(const DeviceProperties &deviceProperties) {
     deviceCreateInfo.pNext = &physicalDeviceFeatures2;
     deviceCreateInfo.queueCreateInfoCount = queueCount;
     deviceCreateInfo.pQueueCreateInfos = queueCreateInfos;
-    deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(deviceProperties._deviceExtensionNames.size());
-    deviceCreateInfo.ppEnabledLayerNames = deviceProperties._deviceExtensionNames.data();
+    deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceProperties._deviceExtensionNames.size());
+    deviceCreateInfo.ppEnabledExtensionNames = deviceProperties._deviceExtensionNames.data();
 
     _device = _physicalDevice.createDevice(deviceCreateInfo);
     InitDeviceExtFunc();

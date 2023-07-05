@@ -130,7 +130,6 @@ auto StaticBufferPool::GetAllocatableSize() const -> size_t {
 }
 
 void StaticBufferPool::FreeUploadHeap() {
-    ExceptionAssert(_uploadBuffer);
     VmaAllocator allocator = GetDevice()->GetAllocator();
     if (_uploadBuffer) {
         vmaUnmapMemory(allocator, _uploadBufferAlloc);

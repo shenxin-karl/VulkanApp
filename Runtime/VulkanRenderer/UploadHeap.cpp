@@ -1,5 +1,6 @@
 #include "UploadHeap.h"
 #include "Device.h"
+#include "ExtDebugUtils.h"
 #include "Misc.h"
 #include "VKException.h"
 #include "Foundation/Exception.h"
@@ -36,6 +37,7 @@ void UploadHeap::OnCreate(Device *pDevice, size_t size) {
         &_bufferAlloc,
         nullptr);
     ExceptionAssert(res == VK_SUCCESS);
+    SetResourceName(device, _buffer, "UploadBuffer");
 
     vmaMapMemory(allocator, _bufferAlloc, reinterpret_cast<void **>(&_pDataBegin));
     _pDataCur = _pDataBegin;
@@ -58,14 +60,14 @@ void UploadHeap::OnDestroy() {
     device.destroyFence(_fence);
     device.destroyCommandPool(_commandPool);
     vmaUnmapMemory(allocator, _bufferAlloc);
-    vmaFreeMemory(allocator, _bufferAlloc);
+    vmaDestroyBuffer(allocator, _buffer, _bufferAlloc);
 
     _buffer = nullptr;
     _bufferAlloc = nullptr;
     _pDataBegin = nullptr;
     _pDataCur = nullptr;
     _pDataEnd = nullptr;
-    ExceptionAssert(!_imageUploadJobs.empty());
+    ExceptionAssert(_imageUploadJobs.empty());
     _imageUploadJobs.clear();
 
     SetIsCreate(false);
@@ -83,7 +85,7 @@ auto UploadHeap::AllocBuffer(size_t size, size_t align) -> uint8_t * {
     return ptr;
 }
 
-void UploadHeap::AddJob(const ImageUploadJob &job) {
+void UploadHeap::AddBarrierJob(const ImageUploadJob &job) {
     _imageUploadJobs.push_back(job);
 }
 

@@ -25,7 +25,7 @@ void SwapChain::OnCreate(Device *pDevice, uint32_t numBackBuffers) {
 }
 
 void SwapChain::OnDestroy() {
-    DestroyRenderPass();
+    OnDestroyWindowDependentResources();
     vk::Device device = GetDevice()->GetVKDevice();
     for (size_t i = 0; i < _imageAvailableSemaphores.size(); ++i) {
         device.destroySemaphore(_imageAvailableSemaphores[i]);
@@ -61,7 +61,7 @@ auto SwapChain::WaitForSwapChain() -> uint32_t {
         &_imageIndex));
 
     _prevSemaphoreIndex = _semaphoreIndex;
-    _semaphoreIndex = (_semaphoreIndex + 1 % _backBufferCount);
+    _semaphoreIndex = ((_semaphoreIndex + 1) % _backBufferCount);
     return _imageIndex;
 }
 
@@ -99,8 +99,8 @@ auto SwapChain::GetCurrentFrameBuffer() const -> vk::Framebuffer {
 
 auto SwapChain::GetRenderPassBeginInfo() const -> vk::RenderPassBeginInfo {
     vk::RenderPassBeginInfo renderPassBeginInfo;
-    renderPassBeginInfo.renderPass = vkgfx::gSwapChain->GetRenderPass();
-    renderPassBeginInfo.framebuffer = vkgfx::gSwapChain->GetCurrentFrameBuffer();
+    renderPassBeginInfo.renderPass = GetRenderPass();
+    renderPassBeginInfo.framebuffer = GetCurrentFrameBuffer();
     renderPassBeginInfo.renderArea.offset = {0, 0};
     renderPassBeginInfo.renderArea.extent = {_width, _height};
     return renderPassBeginInfo;
@@ -138,6 +138,7 @@ void SwapChain::CreateRTV() {
         imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
         imageViewCreateInfo.subresourceRange.levelCount = 1;
         imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        imageViewCreateInfo.subresourceRange.layerCount = 1;
         imageViewCreateInfo.viewType = vk::ImageViewType::e2D;
         imageViewCreateInfo.image = _images[i];
         _imageViews[i] = device.createImageView(imageViewCreateInfo);
@@ -158,7 +159,7 @@ void SwapChain::CreateRenderPass() {
     vk::AttachmentDescription attachments[1];
     attachments[0].format = _swapChainFormat.format;
     attachments[0].samples = vk::SampleCountFlagBits::e1;
-    attachments[0].loadOp = vk::AttachmentLoadOp::eDontCare;
+    attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
     attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
     attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
     attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
@@ -285,8 +286,10 @@ void SwapChain::OnCreateWindowDependentResources(size_t width, size_t height, bo
     swapChainCreateInfo.clipped = true;
     swapChainCreateInfo.imageUsage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eColorAttachment;
     swapChainCreateInfo.imageSharingMode = vk::SharingMode::eExclusive;
-    uint32_t queueFamilyIndices[2] = {GetDevice()->GetGraphicsQueueFamilyIndex(),
-        GetDevice()->GetPresentQueueFamilyIndex()};
+    uint32_t queueFamilyIndices[2] = {
+    	GetDevice()->GetGraphicsQueueFamilyIndex(),
+        GetDevice()->GetPresentQueueFamilyIndex()
+    };
     if (queueFamilyIndices[0] != queueFamilyIndices[1]) {
         swapChainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
         swapChainCreateInfo.queueFamilyIndexCount = 2;
@@ -306,7 +309,9 @@ void SwapChain::OnDestroyWindowDependentResources() {
     DestroyRenderPass();
     DestroyFrameBuffers();
     DestroyRTV();
-    GetDevice()->GetVKDevice().destroySwapchainKHR(_swapChain);
+    if (_swapChain) {
+		GetDevice()->GetVKDevice().destroySwapchainKHR(_swapChain);
+    }
 }
 
 auto SwapChain::QuerySwapChainSupport(vk::PhysicalDevice physicalDevice) const -> SwapChainSupportDetails {
