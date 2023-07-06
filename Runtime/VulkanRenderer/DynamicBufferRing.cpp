@@ -7,11 +7,11 @@
 
 namespace vkgfx {
 
-void DynamicBufferRing::OnCreate(Device *pDevice,
+void DynamicBufferRing::OnCreate(std::string_view name,
+    Device *pDevice,
     BufferType bufferType,
     size_t numBackBuffers,
-    size_t memoryTotalSize,
-    std::string_view name) {
+    size_t memoryTotalSize) {
 
     _memTotalSize = memoryTotalSize;
     _mem.OnCreate(numBackBuffers, _memTotalSize);

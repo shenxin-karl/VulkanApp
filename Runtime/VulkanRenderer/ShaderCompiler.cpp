@@ -89,6 +89,7 @@ bool ShaderCompiler::Compile(const stdfs::path &path,
 
 	if (makeDebugInfo) {
 		arguments.push_back(L"-Zi");
+        arguments.push_back(L"-O0");
 	}
 
     std::vector<std::wstring> macros;

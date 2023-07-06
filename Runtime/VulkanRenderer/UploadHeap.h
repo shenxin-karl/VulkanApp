@@ -9,15 +9,16 @@ class Device;
 class UploadHeap : public VKObject {
 public:
     struct ImageUploadJob {
-        vk::Image image;
         vk::BufferImageCopy bufferImageCopy;
         vk::ImageMemoryBarrier prevBarrier;
         vk::ImageMemoryBarrier postBarrier;
     };
 public:
-    void OnCreate(Device *pDevice, size_t size);
+    void OnCreate(std::string_view name, Device *pDevice, size_t size);
     void OnDestroy();
-    auto AllocBuffer(size_t size, size_t align) -> uint8_t *;
+    [[nodiscard]]
+    auto AllocBuffer(size_t sizeInByte, size_t align) -> uint8_t *;
+    bool AllocBuffer(const void *pInitData, size_t sizeInByte, size_t align = 1);
     void AddBarrierJob(const ImageUploadJob &job);
     void Flush();
     auto GetAllocatableSize(size_t align = 0) const -> size_t;

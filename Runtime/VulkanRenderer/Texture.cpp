@@ -5,18 +5,27 @@
 
 namespace vkgfx {
 
-void Texture::OnCreate(Device *pDevice, const vk::ImageCreateInfo &createInfo, std::string_view name) {
+VmaAllocationCreateInfo Texture::sDefaultAllocationCreateInfo = [] -> VmaAllocationCreateInfo {
+    VmaAllocationCreateInfo result = {};
+    result.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    return result;
+}();
+
+void Texture::OnCreate(std::string_view name,
+    Device *pDevice,
+    const vk::ImageCreateInfo &createInfo,
+    VmaAllocationInfo gpuImageAllocInfo,
+    const VmaAllocationCreateInfo &imageAllocCreateInfo) {
+
     SetDevice(pDevice);
     _name = name;
+    _imageCreateInfo = createInfo;
 
     VmaAllocator allocator = pDevice->GetAllocator();
     vk::Device device = GetDevice()->GetVKDevice();
 
-    VmaAllocationInfo gpuImageAllocInfo = {};
-    VmaAllocationCreateInfo imageAllocCreateInfo = {};
-    imageAllocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
     VkResult res = vmaCreateImage(allocator,
-        reinterpret_cast<const VkImageCreateInfo *>(&createInfo),
+        reinterpret_cast<const VkImageCreateInfo *>(&_imageCreateInfo),
         &imageAllocCreateInfo,
         reinterpret_cast<VkImage *>(&_image),
         &_imageAlloc,

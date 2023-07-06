@@ -63,4 +63,13 @@ inline auto GetColorBlendAttachmentState_Opaque() -> const vk::PipelineColorBlen
     return &sStateCreateInfo;
 }
 
+inline auto GetComponentMapping_RGBA() -> vk::ComponentMapping {
+	vk::ComponentMapping mapping;
+    mapping.r = vk::ComponentSwizzle::eR;
+    mapping.g = vk::ComponentSwizzle::eG;
+    mapping.b = vk::ComponentSwizzle::eB;
+    mapping.a = vk::ComponentSwizzle::eA;
+    return mapping;
+}
+
 }    // namespace vkgfx

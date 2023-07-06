@@ -205,3 +205,6 @@ PenaltyReturnTypeOnItsOwnLine: 1000
 
 # 宏条件缩进
 IndentPPDirectives: BeforeHash
+
+# 标签总是换行
+BreakAfterAttributes: Always 

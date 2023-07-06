@@ -241,7 +241,7 @@ void Application::DestroyVulkan() {
 }
 
 void Application::GlfwErrorCallback(int error, const char *description) {
-    gLogger->Error("GLFW Error {}: {}", error, description);
+    Logger::Error("GLFW Error {}: {}", error, description);
 }
 
 void Application::FrameBufferResizeCallback(GLFWwindow *pWindow, int width, int height) {
@@ -266,10 +266,10 @@ void Application::Loading() {
     };
 
     constexpr size_t k128MB = 128 * 1024 * 1024;
-    _uploadHeap.OnCreate(vkgfx::gDevice, k128MB);
+    _uploadHeap.OnCreate("GlobalUploadHeap", vkgfx::gDevice, k128MB);
 
     size_t memoryAllocSize = sizeof(Vertex) * vertices.size();
-    _vertexBuffer.OnCreate(vkgfx::gDevice, memoryAllocSize, "Triangle Size");
+    _vertexBuffer.OnCreate("TriangleBuffer", vkgfx::gDevice, memoryAllocSize);
     _triangleBufferInfo = _vertexBuffer.AllocBuffer(vertices).value();
     _vertexBuffer.UploadData(_uploadHeap);
     _vertexBuffer.FreeUploadHeap();

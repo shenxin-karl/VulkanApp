@@ -4,10 +4,11 @@
 #include "Misc.h"
 #include "VKException.h"
 #include "Foundation/Exception.h"
+#include "Foundation/Logger.h"
 
 namespace vkgfx {
 
-void UploadHeap::OnCreate(Device *pDevice, size_t size) {
+void UploadHeap::OnCreate(std::string_view name, Device *pDevice, size_t size) {
     vk::Device device = pDevice->GetVKDevice();
     VmaAllocator allocator = pDevice->GetAllocator();
 
@@ -37,7 +38,7 @@ void UploadHeap::OnCreate(Device *pDevice, size_t size) {
         &_bufferAlloc,
         nullptr);
     ExceptionAssert(res == VK_SUCCESS);
-    SetResourceName(device, _buffer, "UploadBuffer");
+    SetResourceName(device, _buffer, name);
 
     vmaMapMemory(allocator, _bufferAlloc, reinterpret_cast<void **>(&_pDataBegin));
     _pDataCur = _pDataBegin;
@@ -74,15 +75,25 @@ void UploadHeap::OnDestroy() {
     SetDevice(nullptr);
 }
 
-auto UploadHeap::AllocBuffer(size_t size, size_t align) -> uint8_t * {
-    size = AlignUp<size_t>(size, align);
+auto UploadHeap::AllocBuffer(size_t sizeInByte, size_t align) -> uint8_t * {
+    sizeInByte = AlignUp<size_t>(sizeInByte, align);
     uint8_t *ptr = reinterpret_cast<uint8_t *>(AlignUp<intptr_t>(reinterpret_cast<intptr_t>(_pDataCur), align));
-    if ((ptr + size) >= _pDataEnd) {
+    if ((ptr + sizeInByte) >= _pDataEnd) {
         return nullptr;
     }
 
-    _pDataCur = ptr + size;
+    _pDataCur = ptr + sizeInByte;
     return ptr;
+}
+
+bool UploadHeap::AllocBuffer(const void *pInitData, size_t sizeInByte, size_t align) {
+	uint8_t *ptr = AllocBuffer(sizeInByte, align);
+    if (ptr == nullptr) {
+        Logger::Error("allocate failed!");
+	    return false;
+    }
+    std::memcpy(ptr, pInitData, sizeInByte);
+    return true;
 }
 
 void UploadHeap::AddBarrierJob(const ImageUploadJob &job) {
@@ -116,7 +127,7 @@ void UploadHeap::Flush() {
 
     for (const ImageUploadJob &job : _imageUploadJobs) {
         _commandBuffer.copyBufferToImage(_buffer,
-            job.image,
+            job.prevBarrier.image,
             vk::ImageLayout::eTransferDstOptimal,
             1,
             &job.bufferImageCopy);

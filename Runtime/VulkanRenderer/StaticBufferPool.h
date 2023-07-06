@@ -11,7 +11,7 @@ class Device;
 class StaticBufferPool : public VKObject {
 public:
     StaticBufferPool();
-    auto OnCreate(Device *pDevice, std::size_t totalMemorySize, std::string_view name) -> vk::Result;
+    auto OnCreate(std::string_view name, Device *pDevice, std::size_t totalMemorySize) -> vk::Result;
     void OnDestroy();
     auto AllocBuffer(size_t numElement, size_t stride, void **pData) -> std::optional<vk::DescriptorBufferInfo>;
     auto AllocBuffer(size_t numElement, size_t stride, const void *pInitData) -> std::optional<vk::DescriptorBufferInfo>;

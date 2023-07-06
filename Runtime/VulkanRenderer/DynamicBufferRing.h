@@ -18,11 +18,11 @@ public:
     };
     ENUM_FLAGS_AS_MEMBER(BufferType);
 public:
-    void OnCreate(Device *pDevice,
+    void OnCreate(std::string_view name, 
+        Device *pDevice,
         BufferType bufferType,
         size_t numBackBuffers,
-        size_t memoryTotalSize,
-        std::string_view name);
+        size_t memoryTotalSize);
     void OnDestroy();
     auto AllocBuffer(size_t size, void **pData) -> std::optional<vk::DescriptorBufferInfo>;
     auto AllocBuffer(size_t size, void *pInitData) -> std::optional<vk::DescriptorBufferInfo>;

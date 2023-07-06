@@ -10,7 +10,7 @@ namespace vkgfx {
 StaticBufferPool::StaticBufferPool() {
 }
 
-auto StaticBufferPool::OnCreate(Device *pDevice, std::size_t totalMemorySize, std::string_view name) -> vk::Result {
+auto StaticBufferPool::OnCreate(std::string_view name, Device *pDevice, std::size_t totalMemorySize) -> vk::Result {
     totalMemorySize = AlignUp<std::size_t>(totalMemorySize, 256);
 
     _totalMemorySize = totalMemorySize;

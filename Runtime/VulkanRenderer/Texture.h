@@ -6,8 +6,13 @@
 namespace vkgfx {
 
 class Texture : public VKObject {
+    static VmaAllocationCreateInfo sDefaultAllocationCreateInfo;
 public:
-    void OnCreate(Device *pDevice, const vk::ImageCreateInfo &createInfo, std::string_view name);
+    void OnCreate(std::string_view name,
+        Device *pDevice,
+        const vk::ImageCreateInfo &createInfo,
+        VmaAllocationInfo gpuImageAllocInfo = {},
+        const VmaAllocationCreateInfo &imageAllocCreateInfo = sDefaultAllocationCreateInfo);
     void OnDestroy();
     auto GetWidth() const -> uint32_t {
         return _imageCreateInfo.extent.width;
@@ -43,7 +48,7 @@ public:
         return _isSupportUAV && _imageCreateInfo.usage & vk::ImageUsageFlagBits::eStorage;
     }
     bool IsSupportUAVAtomic() const {
-	    return _isSupportUAVAtomic && _imageCreateInfo.usage & vk::ImageUsageFlagBits::eStorage;
+        return _isSupportUAVAtomic && _imageCreateInfo.usage & vk::ImageUsageFlagBits::eStorage;
     }
 private:
     void CheckViewSupport();
