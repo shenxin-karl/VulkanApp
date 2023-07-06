@@ -5,10 +5,10 @@
 #include <ShellScalingApi.h>
 
 void ImGUI::OnCreate(vkgfx::Device *pDevice,
-                     vk::RenderPass renderPass,
-                     vkgfx::UploadHeap &uploadHeap,
-                     vkgfx::DynamicBufferRing *pConstantBuffer,
-                     float fontSize) {
+    vk::RenderPass renderPass,
+    vkgfx::UploadHeap &uploadHeap,
+    vkgfx::DynamicBufferRing *pConstantBuffer,
+    float fontSize) {
 
     _pConstantBuffer = pConstantBuffer;
     _pDevice = pDevice;
@@ -54,7 +54,7 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
     _textureSRV = _pDevice->GetVKDevice().createImageView(imageViewCreateInfo);
 
     io.Fonts->TexID = static_cast<void *>(_textureSRV);
-    uploadHeap.AllocBuffer(pixels, width*height*4);
+    uploadHeap.AllocBuffer(pixels, width * height * 4);
 
     vkgfx::UploadHeap::ImageUploadJob job;
     job.prevBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryWrite;
@@ -70,7 +70,7 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
     job.bufferImageCopy.imageSubresource.layerCount = 1;
     job.bufferImageCopy.imageExtent.width = width;
     job.bufferImageCopy.imageExtent.height = height;
-	job.bufferImageCopy.imageExtent.depth = 1;
+    job.bufferImageCopy.imageExtent.depth = 1;
 
     job.postBarrier = job.prevBarrier;
     job.postBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;

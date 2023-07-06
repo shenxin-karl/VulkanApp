@@ -96,7 +96,7 @@ bool UploadHeap::AllocBuffer(const void *pInitData, size_t sizeInByte, size_t al
     return true;
 }
 
-void UploadHeap::AddBarrierJob(const ImageUploadJob &job) {
+void UploadHeap::AddImageJob(const ImageUploadJob &job) {
     _imageUploadJobs.push_back(job);
 }
 
