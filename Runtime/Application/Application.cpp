@@ -34,13 +34,13 @@ void Application::Startup() {
 }
 
 void Application::Cleanup() {
+    DestroyVulkan();
+    DestroyGlfw();
+
     gShaderManager->Destroy();
     vkgfx::gDxcModule->OnDestroy();
     gAssetProjectSetting->Destroy();
     gLogger->Destroy();
-
-    DestroyVulkan();
-    DestroyGlfw();
 }
 
 bool Application::IsDone() const {
