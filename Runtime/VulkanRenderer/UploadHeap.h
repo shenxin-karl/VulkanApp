@@ -13,12 +13,14 @@ public:
         vk::ImageMemoryBarrier prevBarrier;
         vk::ImageMemoryBarrier postBarrier;
     };
+    using BufferOffset = std::optional<vk::DeviceSize>;
 public:
     void OnCreate(std::string_view name, Device *pDevice, size_t size);
     void OnDestroy();
     [[nodiscard]]
-    auto AllocBuffer(size_t sizeInByte, size_t align) -> uint8_t *;
-    bool AllocBuffer(const void *pInitData, size_t sizeInByte, size_t align = 1);
+    auto AllocBuffer(uint8_t **pOutBufferPtr, size_t sizeInByte, size_t align = 1) -> BufferOffset;
+    [[nodiscard]]
+    auto AllocBuffer(const void *pInitData, size_t sizeInByte, size_t align = 1) -> BufferOffset;
     void AddImageJob(const ImageUploadJob &job);
     void Flush();
     auto GetAllocatableSize(size_t align = 0) const -> size_t;

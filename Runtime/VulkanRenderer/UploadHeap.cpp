@@ -75,25 +75,27 @@ void UploadHeap::OnDestroy() {
     SetDevice(nullptr);
 }
 
-auto UploadHeap::AllocBuffer(size_t sizeInByte, size_t align) -> uint8_t * {
+auto UploadHeap::AllocBuffer(uint8_t **pOutBufferPtr, size_t sizeInByte, size_t align) -> BufferOffset {
     sizeInByte = AlignUp<size_t>(sizeInByte, align);
     uint8_t *ptr = reinterpret_cast<uint8_t *>(AlignUp<intptr_t>(reinterpret_cast<intptr_t>(_pDataCur), align));
     if ((ptr + sizeInByte) >= _pDataEnd) {
-        return nullptr;
+        return std::nullopt;
     }
 
     _pDataCur = ptr + sizeInByte;
-    return ptr;
+    *pOutBufferPtr = ptr;
+    return std::make_optional<vk::DeviceSize>(ptr - _pDataBegin);
 }
 
-bool UploadHeap::AllocBuffer(const void *pInitData, size_t sizeInByte, size_t align) {
-	uint8_t *ptr = AllocBuffer(sizeInByte, align);
-    if (ptr == nullptr) {
+bool UploadHeap::AllocBuffer(const void *pInitData, size_t sizeInByte, size_t align) -> BufferOffset {
+    uint8_t *ptr = nullptr;
+    std::optional<vk::DeviceSize> pOffset = AllocBuffer(&ptr, sizeInByte, align);
+    if (!pOffset.has_value()) {
         Logger::Error("allocate failed!");
-	    return false;
+	    return std::nullopt;
     }
     std::memcpy(ptr, pInitData, sizeInByte);
-    return true;
+    return  pOffset;
 }
 
 void UploadHeap::AddImageJob(const ImageUploadJob &job) {

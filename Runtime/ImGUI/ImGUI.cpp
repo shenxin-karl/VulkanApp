@@ -4,11 +4,16 @@
 #include "VulkanRenderer/Utils.hpp"
 #include <ShellScalingApi.h>
 
+#include "Shader/ShaderManager.h"
+#include "Utils/AssetProjectSetting.h"
+#include "VulkanRenderer/DefineList.h"
+#include "VulkanRenderer/ExtDebugUtils.h"
+
 void ImGUI::OnCreate(vkgfx::Device *pDevice,
-    vk::RenderPass renderPass,
-    vkgfx::UploadHeap &uploadHeap,
-    vkgfx::DynamicBufferRing *pConstantBuffer,
-    float fontSize) {
+                     vk::RenderPass renderPass,
+                     vkgfx::UploadHeap &uploadHeap,
+                     vkgfx::DynamicBufferRing *pConstantBuffer,
+                     float fontSize) {
 
     _pConstantBuffer = pConstantBuffer;
     _pDevice = pDevice;
@@ -23,7 +28,6 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
     unsigned char *pixels;
     int width, height;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-    size_t uploadSize = width * height * 4 * sizeof(char);
 
     vk::ImageCreateInfo imageCreateInfo;
     imageCreateInfo.imageType = vk::ImageType::e2D;
@@ -54,7 +58,7 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
     _textureSRV = _pDevice->GetVKDevice().createImageView(imageViewCreateInfo);
 
     io.Fonts->TexID = static_cast<void *>(_textureSRV);
-    uploadHeap.AllocBuffer(pixels, width * height * 4);
+    std::optional<vk::DeviceSize> pOffset = uploadHeap.AllocBuffer(pixels, width * height * 4);
 
     vkgfx::UploadHeap::ImageUploadJob job;
     job.prevBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryWrite;
@@ -66,6 +70,7 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
     job.prevBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
     job.prevBarrier.subresourceRange.layerCount = 1;
 
+    job.bufferImageCopy.bufferOffset = *pOffset;
     job.bufferImageCopy.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
     job.bufferImageCopy.imageSubresource.layerCount = 1;
     job.bufferImageCopy.imageExtent.width = width;
@@ -79,6 +84,56 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
     uploadHeap.AddImageJob(job);
 
     uploadHeap.Flush();
+
+
+    stdfs::path sourcePath = gAssetProjectSetting->GetAssetAbsolutePath() / "Shaders" / "ImGUI.hlsl";
+
+    vkgfx::DefineList defineList;
+    vk::PipelineShaderStageCreateInfo shaderStages[2];
+    ShaderLoadInfo vertexLoadInfo = {
+        sourcePath,
+        "VSMain",
+        vkgfx::ShaderType::kVS,
+        defineList,
+    };
+    gShaderManager->LoadShaderStageCreateInfo(vertexLoadInfo, shaderStages[0]);
+
+    ShaderLoadInfo pixelLoadInfo = {
+        sourcePath,
+        "PSMain",
+        vkgfx::ShaderType::kPS,
+        defineList,
+    };
+    gShaderManager->LoadShaderStageCreateInfo(pixelLoadInfo, shaderStages[1]);
+
+    vk::DescriptorSetLayoutBinding layoutBinding[2];
+    layoutBinding[0].binding = 0;
+    layoutBinding[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+    layoutBinding[0].descriptorCount = 1;
+    layoutBinding[0].stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+    layoutBinding[1].binding = 1;
+    layoutBinding[1].descriptorType = vk::DescriptorType::eSampledImage;
+    layoutBinding[1].descriptorCount = 1;
+    layoutBinding[1].stageFlags = vk::ShaderStageFlagBits::eFragment;
+
+    vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
+    descriptorSetLayoutCreateInfo.bindingCount = 2;
+    descriptorSetLayoutCreateInfo.pBindings = layoutBinding;
+
+    vk::Device device = pDevice->GetVKDevice();
+    _descriptorSetLayout = device.createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
+    vkgfx::SetResourceName(device, _pipelineLayout, "ImGUI DescriptorSetLayout");
+
+    vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    pipelineLayoutCreateInfo.setLayoutCount = 1;
+    pipelineLayoutCreateInfo.pSetLayouts = &_descriptorSetLayout;
+    _pipelineLayout = device.createPipelineLayout(pipelineLayoutCreateInfo);
+    vkgfx::SetResourceName(device, _pipelineLayout, "ImGUI PipelineLayout");
+
+    UpdateRenderPass(renderPass);
 }
 
 void ImGUI::OnDestroy() {
