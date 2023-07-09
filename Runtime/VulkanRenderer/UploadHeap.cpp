@@ -87,7 +87,7 @@ auto UploadHeap::AllocBuffer(uint8_t **pOutBufferPtr, size_t sizeInByte, size_t 
     return std::make_optional<vk::DeviceSize>(ptr - _pDataBegin);
 }
 
-bool UploadHeap::AllocBuffer(const void *pInitData, size_t sizeInByte, size_t align) -> BufferOffset {
+auto UploadHeap::AllocBuffer(const void *pInitData, size_t sizeInByte, size_t align) -> BufferOffset {
     uint8_t *ptr = nullptr;
     std::optional<vk::DeviceSize> pOffset = AllocBuffer(&ptr, sizeInByte, align);
     if (!pOffset.has_value()) {

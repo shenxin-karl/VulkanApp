@@ -1,6 +1,8 @@
 #pragma once
 #include <imgui.h>
 #include "VulkanRenderer/Texture.h"
+#include "VulkanRenderer/VKObject.h"
+#include <glm/glm.hpp>
 
 namespace vkgfx {
 
@@ -10,7 +12,10 @@ class DynamicBufferRing;
 
 }    // namespace vkgfx
 
-class ImGUI {
+class ImGUI : vkgfx::VKObject {
+    struct ConstantBuffer {
+	    glm::mat4 mvp;
+    };
 public:
     void OnCreate(vkgfx::Device *pDevice,
         vk::RenderPass renderPass,
@@ -21,7 +26,6 @@ public:
     void UpdateRenderPass(vk::RenderPass renderPass);
     void Draw(vk::CommandBuffer cmd);
 private:
-    vkgfx::Device *_pDevice = nullptr;
     vkgfx::DynamicBufferRing *_pConstantBuffer = nullptr;
     vk::Sampler _sampler;
     vkgfx::Texture _texture;

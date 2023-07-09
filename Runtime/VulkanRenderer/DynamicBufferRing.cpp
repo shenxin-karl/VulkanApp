@@ -95,7 +95,10 @@ auto DynamicBufferRing::GetAllocatableSize() const -> size_t {
     return _mem.GetAllocatableSize();
 }
 
-void DynamicBufferRing::SetDescriptorSet(uint32_t index, size_t size, vk::DescriptorSet descriptorSet) {
+void DynamicBufferRing::AttachBufferToDescriptorSet(vk::DescriptorSet descriptorSet,
+    uint32_t binding,
+    size_t size) const {
+
     vk::DescriptorBufferInfo out = {};
     out.buffer = _buffer;
     out.offset = 0;
@@ -107,7 +110,7 @@ void DynamicBufferRing::SetDescriptorSet(uint32_t index, size_t size, vk::Descri
     write.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
     write.pBufferInfo = &out;
     write.dstArrayElement = 0;
-    write.dstBinding = index;
+    write.dstBinding = binding;
 
     vk::Device device = GetDevice()->GetVKDevice();
     device.updateDescriptorSets(1, &write, 0, nullptr);

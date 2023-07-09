@@ -11,6 +11,7 @@ int RunApplication(IApplication &application) {
 			application.PollEvents();
 			if (application.IsPause()) {
 				pGameTimer->Stop();
+				std::this_thread::sleep_for(sleepTime);
 				continue;
 			}
 			if (pGameTimer->IsStopped()) {

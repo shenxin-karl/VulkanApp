@@ -7,6 +7,7 @@
 #include "Foundation/CompileEnvInfo.hpp"
 #include "Foundation/NamespeceAlias.h"
 #include "Foundation/NonCopyable.h"
+#include "Foundation/ObjectView.hpp"
 
 namespace vkgfx {
 class DefineList;
@@ -17,7 +18,7 @@ public:
     bool Compile(const stdfs::path &path,
         std::string_view entryPoint,
         ShaderType type,
-        const DefineList &defineList,
+        ObjectView<const DefineList> pDefineList,
         bool makeDebugInfo = !CompileEnvInfo::IsModeRelease());
     auto GetErrorMessage() const -> const std::string &;
     auto GetByteCodePtr() const -> void *;

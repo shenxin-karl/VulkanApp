@@ -4,6 +4,7 @@
 #include "Foundation/RuntimeStatic.h"
 #include "Foundation/NonCopyable.h"
 #include "Foundation/NamespeceAlias.h"
+#include "Foundation/ObjectView.hpp"
 #include "Foundation/UUID128.h"
 #include "VulkanRenderer/EnumDefinition.h"
 
@@ -15,7 +16,7 @@ struct ShaderLoadInfo {
 	const stdfs::path &sourcePath;
     std::string_view entryPoint;
     vkgfx::ShaderType shaderType;
-    const vkgfx::DefineList &defineList;
+    ObjectView<const vkgfx::DefineList> pDefineList;
 };
 
 class ShaderDependency;

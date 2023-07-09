@@ -23,21 +23,21 @@ Application::Application() {
 
 void Application::Startup() {
     gLogger->Initialize();
+    gLogger->StartLogging();
     gAssetProjectSetting->Initialize();
     vkgfx::gDxcModule->OnCreate();
-    gShaderManager->Initialize();
 
-    gLogger->StartLogging();
     SetupGlfw();
     SetupVulkan();
+
+    gShaderManager->Initialize();
     Loading();
 }
 
 void Application::Cleanup() {
+    gShaderManager->Destroy();
     DestroyVulkan();
     DestroyGlfw();
-
-    gShaderManager->Destroy();
     vkgfx::gDxcModule->OnDestroy();
     gAssetProjectSetting->Destroy();
     gLogger->Destroy();
@@ -122,7 +122,7 @@ void Application::OnResize() {
     }
 
     vk::PipelineShaderStageCreateInfo shaderStages[2];
-    ShaderLoadInfo loadInfo = {"Assets/Shaders/Triangles.hlsl", "VSMain", vkgfx::ShaderType::kVS, {}};
+    ShaderLoadInfo loadInfo = {"Assets/Shaders/Triangles.hlsl", "VSMain", vkgfx::ShaderType::kVS };
     gShaderManager->LoadShaderStageCreateInfo(loadInfo, shaderStages[0]);
 
     loadInfo.entryPoint = "PSMain";

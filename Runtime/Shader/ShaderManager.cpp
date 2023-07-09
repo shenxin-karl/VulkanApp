@@ -41,7 +41,7 @@ void ShaderManager::Initialize() {
 
 void ShaderManager::Destroy() {
     vk::Device device = vkgfx::gDevice->GetVKDevice();
-    for (auto &shaderModule : _shaderModuleMap | std::views::values) {
+    for (auto &&[_, shaderModule] : _shaderModuleMap) {
         device.destroyShaderModule(shaderModule);
     }
     _shaderModuleMap.clear();
@@ -60,7 +60,7 @@ auto ShaderManager::LoadShaderModule(const ShaderLoadInfo &loadInfo) -> vk::Shad
         sourcePath.string(),
         loadInfo.entryPoint.data(),
         magic_enum::enum_name(loadInfo.shaderType).data(),
-        loadInfo.defineList.ToString());
+        loadInfo.pDefineList.HasValue() ? loadInfo.pDefineList->ToString() : "");
 
     UUID128 uuid = UUID128::New(keyString);
     if (auto iter = _shaderModuleMap.find(uuid); iter != _shaderModuleMap.end()) {
@@ -75,7 +75,7 @@ auto ShaderManager::LoadShaderModule(const ShaderLoadInfo &loadInfo) -> vk::Shad
     }
 
     vkgfx::ShaderCompiler shaderCompiler;
-    if (!shaderCompiler.Compile(sourcePath, loadInfo.entryPoint, loadInfo.shaderType, loadInfo.defineList)) {
+    if (!shaderCompiler.Compile(sourcePath, loadInfo.entryPoint, loadInfo.shaderType, loadInfo.pDefineList)) {
         Logger::Warning("Compile shader {} error: the error message: {}",
             sourcePath.string(),
             shaderCompiler.GetErrorMessage());
@@ -154,7 +154,7 @@ auto ShaderManager::LoadFromCache(UUID128 uuid, const stdfs::path &sourcePath, c
     -> vk::ShaderModule {
 
     if (!stdfs::exists(cachePath)) {
-	    return nullptr;
+        return nullptr;
     }
 
     vk::ShaderModule shaderModule = nullptr;

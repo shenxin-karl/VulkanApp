@@ -47,7 +47,7 @@ public:
 bool ShaderCompiler::Compile(const stdfs::path &path,
     std::string_view entryPoint,
     ShaderType type,
-    const DefineList &defineList,
+    ObjectView<const DefineList> pDefineList,
     bool makeDebugInfo) {
 
     std::wstring fileName = nstd::to_wstring(path.string());
@@ -92,11 +92,14 @@ bool ShaderCompiler::Compile(const stdfs::path &path,
         arguments.push_back(L"-O0");
 	}
 
+
     std::vector<std::wstring> macros;
-    for (auto &&[key, value] : defineList) {
-        std::string arg = fmt::format("-D{}={}", key, value);
-        macros.push_back(nstd::to_wstring(arg));
-        arguments.push_back(macros.back().c_str());
+    if (pDefineList.HasValue()) {
+	    for (auto &&[key, value] : *pDefineList) {
+	        std::string arg = fmt::format("-D{}={}", key, value);
+	        macros.push_back(nstd::to_wstring(arg));
+	        arguments.push_back(macros.back().c_str());
+	    }
     }
 
     // Compile shader

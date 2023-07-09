@@ -23,6 +23,9 @@ public:
     auto GetDevice() const -> Device * {
 	    return _pDevice;
     }
+    explicit operator bool() const {
+	    return _isCreate;
+    }
 private:
     Device *_pDevice = nullptr;
     bool _isCreate = false;

@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include "Ring.h"
@@ -27,7 +28,7 @@ public:
     auto AllocBuffer(size_t size, void **pData) -> std::optional<vk::DescriptorBufferInfo>;
     auto AllocBuffer(size_t size, void *pInitData) -> std::optional<vk::DescriptorBufferInfo>;
     auto GetAllocatableSize() const -> size_t;
-    void SetDescriptorSet(uint32_t index, size_t size, vk::DescriptorSet descriptorSet);
+    void AttachBufferToDescriptorSet(vk::DescriptorSet descriptorSet, uint32_t binding, size_t size) const;
     void OnBeginFrame();
 
     template<typename T>
