@@ -1,7 +1,7 @@
 #pragma once
 #include "Exception.h"
 
-class EmptyObjectView : public Exception {};
+class EmptyObjectView final : public Exception {};
 
 template<typename T>
     requires(!std::is_reference_v<T>)

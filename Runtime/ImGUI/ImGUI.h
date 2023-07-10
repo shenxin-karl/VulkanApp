@@ -26,7 +26,7 @@ public:
     void UpdateRenderPass(vk::RenderPass renderPass);
     void Draw(vk::CommandBuffer cmd);
 private:
-    vkgfx::DynamicBufferRing *_pConstantBuffer = nullptr;
+    vkgfx::DynamicBufferRing *_pDynamicBuffer = nullptr;
     vk::Sampler _sampler;
     vkgfx::Texture _texture;
     vk::ImageView _textureSRV;

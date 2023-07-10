@@ -190,7 +190,7 @@ void Application::OnResize() {
     pipelineCreateInfo.renderPass = vkgfx::gSwapChain->GetRenderPass();
     pipelineCreateInfo.basePipelineHandle = nullptr;
     pipelineCreateInfo.basePipelineIndex = -1;
-    _graphicsPipeline = device.createGraphicsPipeline(nullptr, pipelineCreateInfo).value;
+    _graphicsPipeline = device.createGraphicsPipeline(vkgfx::gDevice->GetPipelineCache(), pipelineCreateInfo).value;
 }
 
 Application::~Application() {

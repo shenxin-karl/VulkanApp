@@ -10,12 +10,12 @@
 #include "VulkanRenderer/VKException.h"
 
 void ImGUI::OnCreate(vkgfx::Device *pDevice,
-                     vk::RenderPass renderPass,
-                     vkgfx::UploadHeap &uploadHeap,
-                     vkgfx::DynamicBufferRing *pConstantBuffer,
-                     float fontSize) {
+    vk::RenderPass renderPass,
+    vkgfx::UploadHeap &uploadHeap,
+    vkgfx::DynamicBufferRing *pConstantBuffer,
+    float fontSize) {
 
-    _pConstantBuffer = pConstantBuffer;
+    _pDynamicBuffer = pConstantBuffer;
     SetDevice(pDevice);
 
     ImGuiIO &io = ImGui::GetIO();
@@ -31,49 +31,49 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
     vk::Device device = pDevice->GetVKDevice();
-	// create texture and srv
+    // create texture and srv
     {
-	    vk::ImageCreateInfo imageCreateInfo;
-	    imageCreateInfo.imageType = vk::ImageType::e2D;
-	    imageCreateInfo.format = vk::Format::eR8G8B8A8Unorm;
-	    imageCreateInfo.extent.width = width;
-	    imageCreateInfo.extent.height = height;
-	    imageCreateInfo.extent.depth = 1;
-	    imageCreateInfo.mipLevels = 1;
-	    imageCreateInfo.arrayLayers = 1;
-	    imageCreateInfo.samples = vk::SampleCountFlagBits::e1;
-	    imageCreateInfo.tiling = vk::ImageTiling::eOptimal;
-	    imageCreateInfo.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
-	    imageCreateInfo.sharingMode = vk::SharingMode::eExclusive;
-	    imageCreateInfo.initialLayout = vk::ImageLayout::eUndefined;
+        vk::ImageCreateInfo imageCreateInfo;
+        imageCreateInfo.imageType = vk::ImageType::e2D;
+        imageCreateInfo.format = vk::Format::eR8G8B8A8Unorm;
+        imageCreateInfo.extent.width = width;
+        imageCreateInfo.extent.height = height;
+        imageCreateInfo.extent.depth = 1;
+        imageCreateInfo.mipLevels = 1;
+        imageCreateInfo.arrayLayers = 1;
+        imageCreateInfo.samples = vk::SampleCountFlagBits::e1;
+        imageCreateInfo.tiling = vk::ImageTiling::eOptimal;
+        imageCreateInfo.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
+        imageCreateInfo.sharingMode = vk::SharingMode::eExclusive;
+        imageCreateInfo.initialLayout = vk::ImageLayout::eUndefined;
 
-	    VmaAllocationCreateInfo imageAllocCreateInfo = {};
-	    imageAllocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-	    imageAllocCreateInfo.flags = VMA_ALLOCATION_CREATE_USER_DATA_COPY_STRING_BIT;
-	    _texture.OnCreate("ImGUI Tex", pDevice, imageCreateInfo, {}, imageAllocCreateInfo);
+        VmaAllocationCreateInfo imageAllocCreateInfo = {};
+        imageAllocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        imageAllocCreateInfo.flags = VMA_ALLOCATION_CREATE_USER_DATA_COPY_STRING_BIT;
+        _texture.OnCreate("ImGUI Tex", pDevice, imageCreateInfo, {}, imageAllocCreateInfo);
 
-	    vk::ImageViewCreateInfo imageViewCreateInfo;
-	    imageViewCreateInfo.image = _texture.GetImage();
-	    imageViewCreateInfo.viewType = vk::ImageViewType::e2D;
-	    imageViewCreateInfo.format = _texture.GetFormat();
-	    imageViewCreateInfo.components = vkgfx::GetComponentMapping_RGBA();
-	    imageViewCreateInfo.subresourceRange.layerCount = 1;
-	    imageViewCreateInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-	    _textureSRV = device.createImageView(imageViewCreateInfo);
+        vk::ImageViewCreateInfo imageViewCreateInfo;
+        imageViewCreateInfo.image = _texture.GetImage();
+        imageViewCreateInfo.viewType = vk::ImageViewType::e2D;
+        imageViewCreateInfo.format = _texture.GetFormat();
+        imageViewCreateInfo.components = vkgfx::GetComponentMapping_RGBA();
+        imageViewCreateInfo.subresourceRange.layerCount = 1;
+        imageViewCreateInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+        _textureSRV = device.createImageView(imageViewCreateInfo);
     }
 
-	// create sampler
+    // create sampler
     {
-		vk::SamplerCreateInfo samplerCreateInfo;
-		samplerCreateInfo.magFilter = vk::Filter::eNearest;
-		samplerCreateInfo.minFilter = vk::Filter::eNearest;
-		samplerCreateInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
-		samplerCreateInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
-		samplerCreateInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
-		samplerCreateInfo.minLod = -1000;
-		samplerCreateInfo.maxLod = +1000;
-		samplerCreateInfo.maxAnisotropy = 1.f;
-		_sampler = device.createSampler(samplerCreateInfo);
+        vk::SamplerCreateInfo samplerCreateInfo;
+        samplerCreateInfo.magFilter = vk::Filter::eNearest;
+        samplerCreateInfo.minFilter = vk::Filter::eNearest;
+        samplerCreateInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+        samplerCreateInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+        samplerCreateInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+        samplerCreateInfo.minLod = -1000;
+        samplerCreateInfo.maxLod = +1000;
+        samplerCreateInfo.maxAnisotropy = 1.f;
+        _sampler = device.createSampler(samplerCreateInfo);
     }
 
     io.Fonts->TexID = static_cast<void *>(_textureSRV);
@@ -104,50 +104,49 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
 
     uploadHeap.Flush();
 
-
     // create descriptor layout
     {
-	    vk::DescriptorSetLayoutBinding layoutBinding[3];
-	    layoutBinding[0].binding = 0;
-	    layoutBinding[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
-	    layoutBinding[0].descriptorCount = 1;
-	    layoutBinding[0].stageFlags = vk::ShaderStageFlagBits::eVertex;
+        vk::DescriptorSetLayoutBinding layoutBinding[3];
+        layoutBinding[0].binding = 0;
+        layoutBinding[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+        layoutBinding[0].descriptorCount = 1;
+        layoutBinding[0].stageFlags = vk::ShaderStageFlagBits::eVertex;
 
-	    layoutBinding[1].binding = 1;
-	    layoutBinding[1].descriptorType = vk::DescriptorType::eSampledImage;
-	    layoutBinding[1].descriptorCount = 1;
-	    layoutBinding[1].stageFlags = vk::ShaderStageFlagBits::eFragment;
+        layoutBinding[1].binding = 1;
+        layoutBinding[1].descriptorType = vk::DescriptorType::eSampledImage;
+        layoutBinding[1].descriptorCount = 1;
+        layoutBinding[1].stageFlags = vk::ShaderStageFlagBits::eFragment;
 
         layoutBinding[2].binding = 2;
         layoutBinding[2].descriptorType = vk::DescriptorType::eSampler;
-	    layoutBinding[2].descriptorCount = 1;
-	    layoutBinding[2].stageFlags = vk::ShaderStageFlagBits::eFragment;
+        layoutBinding[2].descriptorCount = 1;
+        layoutBinding[2].stageFlags = vk::ShaderStageFlagBits::eFragment;
 
-	    vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
-	    descriptorSetLayoutCreateInfo.bindingCount = 2;
-	    descriptorSetLayoutCreateInfo.pBindings = layoutBinding;
+        vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
+        descriptorSetLayoutCreateInfo.bindingCount = 2;
+        descriptorSetLayoutCreateInfo.pBindings = layoutBinding;
 
-	    _descriptorSetLayout = device.createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
-	    vkgfx::SetResourceName(device, _pipelineLayout, "ImGUI DescriptorSetLayout");
+        _descriptorSetLayout = device.createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
+        vkgfx::SetResourceName(device, _pipelineLayout, "ImGUI DescriptorSetLayout");
     }
     // create pipeline layout
     {
-	    vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
-	    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-	    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-	    pipelineLayoutCreateInfo.setLayoutCount = 1;
-	    pipelineLayoutCreateInfo.pSetLayouts = &_descriptorSetLayout;
-	    _pipelineLayout = device.createPipelineLayout(pipelineLayoutCreateInfo);
-	    vkgfx::SetResourceName(device, _pipelineLayout, "ImGUI PipelineLayout");
+        vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
+        pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+        pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+        pipelineLayoutCreateInfo.setLayoutCount = 1;
+        pipelineLayoutCreateInfo.pSetLayouts = &_descriptorSetLayout;
+        _pipelineLayout = device.createPipelineLayout(pipelineLayoutCreateInfo);
+        vkgfx::SetResourceName(device, _pipelineLayout, "ImGUI PipelineLayout");
     }
 
     // create descriptor pool, allocate and update the descripties
     {
-	    vk::DescriptorPoolSize poolTypeCount[] = {
-            { vk::DescriptorType::eUniformBufferDynamic, 128 },
-            { vk::DescriptorType::eSampledImage, 128 },
-            { vk::DescriptorType::eSampler, 128 },
-	    };
+        vk::DescriptorPoolSize poolTypeCount[] = {
+            {vk::DescriptorType::eUniformBufferDynamic, 128},
+            {vk::DescriptorType::eSampledImage, 128},
+            {vk::DescriptorType::eSampler, 128},
+        };
         vk::DescriptorPoolCreateInfo poolCreateInfo;
         poolCreateInfo.maxSets = 128 * 3;
         poolCreateInfo.poolSizeCount = 3;
@@ -159,9 +158,9 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
         allocateInfo.descriptorSetCount = 1;
         allocateInfo.pSetLayouts = &_descriptorSetLayout;
         for (size_t i = 0; i < 128; ++i) {
-	        vk::Result res = device.allocateDescriptorSets(&allocateInfo, &_descriptorSet[i]);
+            vk::Result res = device.allocateDescriptorSets(&allocateInfo, &_descriptorSet[i]);
             VKException::Throw(res);
-			_pConstantBuffer->AttachBufferToDescriptorSet(_descriptorSet[i], 0, sizeof(ConstantBuffer));
+            _pDynamicBuffer->AttachBufferToDescriptorSet(_descriptorSet[i], 0, sizeof(ConstantBuffer));
 
             vk::DescriptorImageInfo descriptorImage[1];
             descriptorImage[0].sampler = _sampler;
@@ -191,26 +190,33 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
 
 void ImGUI::OnDestroy() {
     if (!GetIsCreate()) {
-	    return;
+        return;
     }
 
     vk::Device device = GetDevice()->GetVKDevice();
-	_texture.OnDestroy();
-	device.destroyImageView(_textureSRV);
-	device.destroySampler(_sampler);
-	device.destroyDescriptorSetLayout(_descriptorSetLayout);
+    _texture.OnDestroy();
+    device.destroyImageView(_textureSRV);
+    device.destroySampler(_sampler);
+    device.destroyDescriptorSetLayout(_descriptorSetLayout);
     device.destroyPipelineLayout(_pipelineLayout);
     device.destroyDescriptorPool(_descriptorPool);
+    device.destroyPipeline(_pipeline);
 
-	_textureSRV = VK_NULL_HANDLE;
+    _textureSRV = VK_NULL_HANDLE;
     _sampler = VK_NULL_HANDLE;
     _descriptorSetLayout = VK_NULL_HANDLE;
     _pipelineLayout = VK_NULL_HANDLE;
     _descriptorPool = VK_NULL_HANDLE;
+    _pipeline = VK_NULL_HANDLE;
 }
 
 void ImGUI::UpdateRenderPass(vk::RenderPass renderPass) {
-	stdfs::path sourcePath = gAssetProjectSetting->GetAssetAbsolutePath() / "Shaders" / "ImGUI.hlsl";
+    vk::Device device = GetDevice()->GetVKDevice();
+    if (_pipeline) {
+        device.destroyPipeline(_pipeline);
+    }
+
+    stdfs::path sourcePath = gAssetProjectSetting->GetAssetAbsolutePath() / "Shaders" / "ImGUI.hlsl";
     vk::PipelineShaderStageCreateInfo shaderStages[2];
     ShaderLoadInfo vertexLoadInfo = {
         sourcePath,
@@ -225,7 +231,111 @@ void ImGUI::UpdateRenderPass(vk::RenderPass renderPass) {
         vkgfx::ShaderType::kPS,
     };
     gShaderManager->LoadShaderStageCreateInfo(pixelLoadInfo, shaderStages[1]);
+
+    vk::VertexInputBindingDescription viBinding;
+    viBinding.binding = 0;
+    viBinding.stride = sizeof(ImDrawVert);
+    viBinding.inputRate = vk::VertexInputRate::eVertex;
+
+    // clang-format off
+    vk::VertexInputAttributeDescription viAttrs[] = {
+    	{0, 0, vk::Format::eR32G32Sfloat, offsetof(ImDrawVert, pos)},
+        {1, 0, vk::Format::eR32G32Sfloat, offsetof(ImDrawVert, uv)},
+        {2, 0, vk::Format::eR8G8B8A8Unorm, offsetof(ImDrawVert, col)}
+    };
+    // clang-format on
+
+    vk::PipelineVertexInputStateCreateInfo viCreateInfo;
+    viCreateInfo.vertexBindingDescriptionCount = 1;
+    viCreateInfo.pVertexBindingDescriptions = &viBinding;
+    viCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32>(std::size(viAttrs));
+    viCreateInfo.pVertexAttributeDescriptions = viAttrs;
+
+    vk::PipelineRasterizationStateCreateInfo rasterizationCreateInfo;
+    rasterizationCreateInfo.polygonMode = vk::PolygonMode::eFill;
+    rasterizationCreateInfo.frontFace = vk::FrontFace::eClockwise;
+    rasterizationCreateInfo.depthClampEnable = VK_FALSE;
+    rasterizationCreateInfo.rasterizerDiscardEnable = VK_FALSE;
+    rasterizationCreateInfo.depthBiasEnable = VK_FALSE;
+    rasterizationCreateInfo.lineWidth = 1.0f;
+
+    vk::PipelineColorBlendAttachmentState blendAttrs = vkgfx::GetColorBlendAttachmentState_Blend();
+    vk::PipelineColorBlendStateCreateInfo colorBlendState;
+    colorBlendState.attachmentCount = 1;
+    colorBlendState.pAttachments = &blendAttrs;
+    colorBlendState.logicOpEnable = VK_FALSE;
+    colorBlendState.blendConstants = std::array{1.f, 1.f, 1.f, 1.f};
+
+    vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
+    pipelineCreateInfo.stageCount = 2;
+    pipelineCreateInfo.pStages = shaderStages;
+    pipelineCreateInfo.pVertexInputState = &viCreateInfo;
+    pipelineCreateInfo.pInputAssemblyState = vkgfx::GetInputAssemblyState_TriangleList();
+    pipelineCreateInfo.pTessellationState = nullptr;
+    pipelineCreateInfo.pViewportState = vkgfx::GetViewportState<1, 1>();
+    pipelineCreateInfo.pRasterizationState = &rasterizationCreateInfo;
+    pipelineCreateInfo.pMultisampleState = vkgfx::GetMultiSampleState_Disable();
+    pipelineCreateInfo.pDepthStencilState = vkgfx::GetDepthStencilState_DisableDepthStencil();
+    pipelineCreateInfo.pColorBlendState = &colorBlendState;
+    pipelineCreateInfo.pDynamicState = vkgfx::GetDynamicState_ViewportScissor();
+    pipelineCreateInfo.layout = _pipelineLayout;
+    pipelineCreateInfo.renderPass = renderPass;
+    pipelineCreateInfo.subpass = 0;
+    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+    pipelineCreateInfo.basePipelineIndex = 0;
+    _pipeline = device.createGraphicsPipeline(GetDevice()->GetPipelineCache(), pipelineCreateInfo).value;
 }
 
 void ImGUI::Draw(vk::CommandBuffer cmd) {
+    vkgfx::PrefMarkerGuard prefMarkerGuard(cmd, "ImGUI Pass");
+    ImGui::Render();
+    if (!_pipeline) {
+        return;
+    }
+
+    ImDrawData *pDrawData = ImGui::GetDrawData();
+    ImDrawVert *pVertexBuffer = nullptr;
+    ImDrawIdx *pIndicesBuffer = nullptr;
+    size_t totalVertexSize = pDrawData->TotalVtxCount * sizeof(ImDrawVert);
+    size_t totalIndicesSize = pDrawData->TotalIdxCount * sizeof(ImDrawIdx);
+    vk::DescriptorBufferInfo vbv = _pDynamicBuffer->AllocBuffer(totalVertexSize, &pVertexBuffer).value();
+    vk::DescriptorBufferInfo ibv = _pDynamicBuffer->AllocBuffer(totalIndicesSize, &pIndicesBuffer).value();
+    for (int i = 0; i < pDrawData->CmdListsCount; ++i) {
+        const ImDrawList *pCmdList = pDrawData->CmdLists[i];
+        memcpy(pVertexBuffer, pCmdList->VtxBuffer.Data, pCmdList->VtxBuffer.Size * sizeof(ImDrawVert));
+        memcpy(pIndicesBuffer, pCmdList->IdxBuffer.Data, pCmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
+        pVertexBuffer += pCmdList->VtxBuffer.Size;
+        pIndicesBuffer += pCmdList->IdxBuffer.Size;
+    }
+
+    vk::DescriptorBufferInfo cbv;
+    {
+        float L = 0.0f;
+        float R = ImGui::GetIO().DisplaySize.x;
+        float B = ImGui::GetIO().DisplaySize.x;
+        float T = 0.0f;
+
+        ConstantBuffer cbuffer;
+        // clang-format off
+        cbuffer.mvp = 
+	    {
+		    { 2.0f / (R - L),       0.0f,               0.0f,       0.0f },
+		    { 0.0f,                 2.0f / (T - B),     0.0f,       0.0f },
+		    { 0.0f,                 0.0f,               0.5f,       0.0f },
+		    { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
+	    };
+        // clang-format on
+        cbv = _pDynamicBuffer->AllocBuffer(cbuffer).value();
+    }
+
+    vk::Viewport viewport;
+    viewport.x = 0;
+    viewport.y = ImGui::GetIO().DisplaySize.y;
+    viewport.width = ImGui::GetIO().DisplaySize.x;
+    viewport.height = -ImGui::GetIO().DisplaySize.y;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    cmd.setViewport(0, viewport);
+    cmd.bindVertexBuffers(0, 1, &vbv.buffer, &vbv.offset);
+    cmd.bindIndexBuffer(ibv.buffer, ibv.offset, vk::IndexType::eUint16);
 }
