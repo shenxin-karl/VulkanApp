@@ -1,4 +1,6 @@
 #include "ImGUI.h"
+
+#include "Application/Application.h"
 #include "VulkanRenderer/Device.h"
 #include "VulkanRenderer/UploadHeap.h"
 #include "VulkanRenderer/Utils.hpp"
@@ -210,6 +212,11 @@ void ImGUI::OnDestroy() {
     _pipeline = VK_NULL_HANDLE;
 }
 
+void ImGUI::SetWindowSize(size_t width, size_t height) {
+    _width = width;
+    _height = height;
+}
+
 void ImGUI::UpdateRenderPass(vk::RenderPass renderPass) {
     vk::Device device = GetDevice()->GetVKDevice();
     if (_pipeline) {
@@ -286,6 +293,33 @@ void ImGUI::UpdateRenderPass(vk::RenderPass renderPass) {
     _pipeline = device.createGraphicsPipeline(GetDevice()->GetPipelineCache(), pipelineCreateInfo).value;
 }
 
+void ImGUI::NewFrame() {
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Setup display size (every frame to accommodate for window resizing)
+    RECT rect;
+    io.DisplaySize.x = static_cast<float>(_width);
+    io.DisplaySize.y = static_cast<float>(_height);
+
+    // Read keyboard modifiers inputs
+    io.KeyCtrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+    io.KeyShift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+    io.KeyAlt = (GetKeyState(VK_MENU) & 0x8000) != 0;
+    io.KeySuper = false;
+    // io.KeysDown : filled by WM_KEYDOWN/WM_KEYUP events
+    // io.MousePos : filled by WM_MOUSEMOVE events
+    // io.MouseDown : filled by WM_*BUTTON* events
+    // io.MouseWheel : filled by WM_MOUSEWHEEL events
+    // Hide OS mouse cursor if ImGui is drawing it
+    if (io.MouseDrawCursor)
+        SetCursor(NULL);    // Start the frame
+    ImGui::NewFrame();
+}
+
+void ImGUI::EndFrame() {
+	ImGui::EndFrame();
+}
+
 void ImGUI::Draw(vk::CommandBuffer cmd) {
     vkgfx::PrefMarkerGuard prefMarkerGuard(cmd, "ImGUI Pass");
     ImGui::Render();
@@ -319,10 +353,10 @@ void ImGUI::Draw(vk::CommandBuffer cmd) {
         // clang-format off
         cbuffer.mvp = 
 	    {
-		    { 2.0f / (R - L),       0.0f,               0.0f,       0.0f },
-		    { 0.0f,                 2.0f / (T - B),     0.0f,       0.0f },
-		    { 0.0f,                 0.0f,               0.5f,       0.0f },
-		    { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
+		    { 2.0f / (R-L),     0.0f,               0.0f,       0.0f },
+		    { 0.0f,             2.0f / (T-B),       0.0f,       0.0f },
+		    { 0.0f,             0.0f,               0.5f,       0.0f },
+		    { (R+L) / (L-R),    (T+B) / (B-T),      0.5f,       1.0f },
 	    };
         // clang-format on
         cbv = _pDynamicBuffer->AllocBuffer(cbuffer).value();
@@ -338,4 +372,68 @@ void ImGUI::Draw(vk::CommandBuffer cmd) {
     cmd.setViewport(0, viewport);
     cmd.bindVertexBuffers(0, 1, &vbv.buffer, &vbv.offset);
     cmd.bindIndexBuffer(ibv.buffer, ibv.offset, vk::IndexType::eUint16);
+    cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipeline);
+
+    int vtxOffset = 0;
+    int idxOffset = 0;
+    ImTextureID pTextureID = nullptr;
+    vk::Device device = GetDevice()->GetVKDevice();
+    uint32_t uniformOffsets[1] = {static_cast<uint32_t>(cbv.offset)};
+
+    for (int i = 0; i < pDrawData->CmdListsCount; ++i) {
+        const ImDrawList *pCmdList = pDrawData->CmdLists[i];
+        for (int j = 0; j < pCmdList->CmdBuffer.size(); ++j) {
+            const ImDrawCmd *pCmd = &pCmdList->CmdBuffer[j];
+            if (pCmd->UserCallback != nullptr) {
+                pCmd->UserCallback(pCmdList, pCmd);
+                continue;
+            }
+
+            vk::Rect2D scissor;
+            ImVec2 rectMin = pCmdList->GetClipRectMin();
+            ImVec2 rectMax = pCmdList->GetClipRectMax();
+            scissor.offset.x = rectMin.x;
+            scissor.offset.y = rectMin.y;
+            scissor.extent.width = rectMax.x;
+            scissor.extent.height = rectMax.y;
+            cmd.setScissor(0, scissor);
+
+            if (pTextureID != pCmd->GetTexID()) {
+                pTextureID = pCmd->GetTexID();
+                vk::DescriptorImageInfo desc_image[1] = {};
+                desc_image[0].sampler = _sampler;
+                desc_image[0].imageView = static_cast<VkImageView>(pCmd->TextureId);
+                desc_image[0].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+                vk::WriteDescriptorSet writes[2];
+                writes[0].dstSet = _descriptorSet[_currentDescriptorIndex];
+                writes[0].descriptorCount = 1;
+                writes[0].descriptorType = vk::DescriptorType::eSampledImage;
+                writes[0].pImageInfo = desc_image;
+                writes[0].dstArrayElement = 0;
+                writes[0].dstBinding = 1;
+
+                writes[1].dstSet = _descriptorSet[_currentDescriptorIndex];
+                writes[1].descriptorCount = 1;
+                writes[1].descriptorType = vk::DescriptorType::eSampler;
+                writes[1].pImageInfo = desc_image;
+                writes[1].dstArrayElement = 0;
+                writes[1].dstBinding = 2;
+
+                device.updateDescriptorSets(2, writes, 0, nullptr);
+                cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                    _pipelineLayout,
+                    0,
+                    1,
+                    &_descriptorSet[_currentDescriptorIndex],
+                    1,
+                    uniformOffsets);
+                ++_currentDescriptorIndex;
+                _currentDescriptorIndex &= 127;
+            }
+            cmd.drawIndexed(pCmd->ElemCount, 1, idxOffset, vtxOffset, 0);
+            idxOffset += pCmd->ElemCount;
+        }
+        vtxOffset += pCmdList->VtxBuffer.size();
+    }
 }

@@ -10,6 +10,7 @@
 #include <imgui.h>
 #include <glm/glm.hpp>
 
+#include "ImGUI/ImGUI.h"
 #include "VulkanRenderer/ExtDebugUtils.h"
 #include "VulkanRenderer/Utils.hpp"
 
@@ -31,6 +32,7 @@ void Application::Startup() {
     SetupVulkan();
 
     gShaderManager->Initialize();
+    //gImGUI->OnCreate(vkgfx::gDevice, vkgfx::gSwapChain->GetRenderPass(), _uploadHeap, )
     Loading();
 }
 

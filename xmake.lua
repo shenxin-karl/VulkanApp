@@ -25,7 +25,7 @@ includes("xmake/stduuid.lua")
 -- requires packages
 add_requires("fmt 9.1.0")
 add_requires("spdlog v1.9.2")   
-add_requires("imgui docking")      
+add_requires("imgui v1.89.7-docking")      
 add_requires("glfw 3.3.8")               
 add_requires("vulkan-hpp v1.3.250", {verify = false})        
 add_requires("vulkan-memory-allocator v3.0.1")

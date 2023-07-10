@@ -1,8 +1,10 @@
 #pragma once
 #include <imgui.h>
+#include <GLFW/glfw3.h>
 #include "VulkanRenderer/Texture.h"
 #include "VulkanRenderer/VKObject.h"
 #include <glm/glm.hpp>
+#include "Foundation/RuntimeStatic.h"
 
 namespace vkgfx {
 
@@ -23,7 +25,10 @@ public:
         vkgfx::DynamicBufferRing *pConstantBuffer,
         float fontSize);
     void OnDestroy();
+    void SetWindowSize(size_t width, size_t height);
     void UpdateRenderPass(vk::RenderPass renderPass);
+    void NewFrame();
+    void EndFrame();
     void Draw(vk::CommandBuffer cmd);
 private:
     vkgfx::DynamicBufferRing *_pDynamicBuffer = nullptr;
@@ -37,4 +42,8 @@ private:
     vk::DescriptorSet _descriptorSet[128];
     uint32_t _currentDescriptorIndex = 0;
     vk::DescriptorSetLayout _descriptorSetLayout;
+    size_t _width = 0;
+    size_t _height = 0;
 };
+
+inline RuntimeStatic<ImGUI> gImGUI;
