@@ -66,25 +66,9 @@ void DynamicBufferRing::OnDestroy() {
     SetDevice(nullptr);
 }
 
-auto DynamicBufferRing::AllocBuffer(size_t size, void **pData) -> std::optional<vk::DescriptorBufferInfo> {
-    size = AlignUp<size_t>(size, 256u);
-    uint32_t memOffset;
-    if (!_mem.Alloc(size, &memOffset)) {
-        *pData = nullptr;
-        return std::nullopt;
-    }
-
-    *pData = static_cast<uint8 *>(_pData) + memOffset;
-    vk::DescriptorBufferInfo bufferInfo;
-    bufferInfo.buffer = _buffer;
-    bufferInfo.offset = memOffset;
-    bufferInfo.range = size;
-    return std::make_optional(bufferInfo);
-}
-
-auto DynamicBufferRing::AllocBuffer(size_t size, void *pInitData) -> std::optional<vk::DescriptorBufferInfo> {
+auto DynamicBufferRing::AllocBuffer(size_t size, const void *pInitData) -> std::optional<vk::DescriptorBufferInfo> {
     void *pBuffer = nullptr;
-    std::optional<vk::DescriptorBufferInfo> res = AllocBuffer(size, &pBuffer);
+    std::optional<vk::DescriptorBufferInfo> res = AllocBufferInternal(size, &pBuffer);
     if (pBuffer) {
         memcpy(pBuffer, pInitData, size);
     }
@@ -118,6 +102,24 @@ void DynamicBufferRing::AttachBufferToDescriptorSet(vk::DescriptorSet descriptor
 
 void DynamicBufferRing::OnBeginFrame() {
     _mem.OnBeginFrame();
+}
+
+auto DynamicBufferRing::AllocBufferInternal(size_t size, void **pOutBufferPtr)
+    -> std::optional<vk::DescriptorBufferInfo> {
+
+    size = AlignUp<size_t>(size, 256u);
+    uint32_t memOffset;
+    if (!_mem.Alloc(size, &memOffset)) {
+        *pOutBufferPtr = nullptr;
+        return std::nullopt;
+    }
+
+    *pOutBufferPtr = static_cast<uint8 *>(_pData) + memOffset;
+    vk::DescriptorBufferInfo bufferInfo;
+    bufferInfo.buffer = _buffer;
+    bufferInfo.offset = memOffset;
+    bufferInfo.range = size;
+    return std::make_optional(bufferInfo);
 }
 
 }    // namespace vkgfx

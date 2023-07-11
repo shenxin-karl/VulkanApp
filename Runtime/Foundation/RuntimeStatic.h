@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstddef>
 #include <type_traits>
+#include "PreprocessorDirectives.h"
 #include "Foundation/NonCopyable.h"
 
 template<typename T>
@@ -15,28 +16,28 @@ public:
         delete _pObject;
         _pObject = nullptr;
     }
-    T *Get() {
+    Inline(2) T *Get() {
         return _pObject;
     }
-    T *operator->() {
+    Inline(2) T *operator->() {
         return _pObject;
     }
-    operator T*() const {
+    Inline(2) operator T*() const {
         return _pObject;
     }
-    explicit operator bool() const {
+    Inline(2) explicit operator bool() const {
         return _pObject != nullptr;
     }
-    friend bool operator!=(const RuntimeStatic &lhs, std::nullptr_t) {
+    Inline(2) friend bool operator!=(const RuntimeStatic &lhs, std::nullptr_t) {
         return lhs._pObject != nullptr;
     }
-    friend bool operator!=(std::nullptr_t, const RuntimeStatic &rhs) {
+    Inline(2) friend bool operator!=(std::nullptr_t, const RuntimeStatic &rhs) {
         return rhs._pObject != nullptr;
     }
-    friend bool operator==(const RuntimeStatic &lhs, std::nullptr_t) {
+    Inline(2) friend bool operator==(const RuntimeStatic &lhs, std::nullptr_t) {
         return lhs._pObject == nullptr;
     }
-    friend bool operator==(std::nullptr_t, const RuntimeStatic &rhs) {
+    Inline(2) friend bool operator==(std::nullptr_t, const RuntimeStatic &rhs) {
         return rhs._pObject == nullptr;
     }
 private:

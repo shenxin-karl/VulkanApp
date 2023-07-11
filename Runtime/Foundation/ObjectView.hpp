@@ -1,5 +1,6 @@
 #pragma once
 #include "Exception.h"
+#include "Foundation/PreprocessorDirectives.h"
 
 class EmptyObjectView final : public Exception {};
 
@@ -76,13 +77,13 @@ public:
     bool HasValue() const noexcept {
         return _ptr != nullptr;
     }
-    auto operator->() const noexcept -> ValueType * {
+    Inline(2) auto operator->() const noexcept -> ValueType * {
         return _ptr;
     }
-    auto operator*() const noexcept -> ValueType & {
+    Inline(2) auto operator*() const noexcept -> ValueType & {
         return *_ptr;
     }
-    explicit operator bool() const noexcept {
+    Inline(2) explicit operator bool() const noexcept {
         return _ptr != nullptr;
     }
     friend auto operator<=>(const ObjectView &, const ObjectView &) noexcept = default;

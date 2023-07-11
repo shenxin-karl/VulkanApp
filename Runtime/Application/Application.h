@@ -8,6 +8,7 @@
 #include "VulkanRenderer/StaticBufferPool.h"
 #include "VulkanRenderer/UploadHeap.h"
 #include "VulkanRenderer/CommandBufferRing.h"
+#include "VulkanRenderer/DynamicBufferRing.h"
 
 class Application : public IApplication {
 public:
@@ -23,13 +24,15 @@ public:
     ~Application() override;
 public:
     void SetupGlfw();
-    void DestroyGlfw();
+    void CleanUpGlfw();
     void SetupVulkan();
-    void DestroyVulkan();
+    void CleanUpVulkan();
     void Loading();
     static void GlfwErrorCallback(int error, const char *description);
     static void FrameBufferResizeCallback(GLFWwindow *pWindow, int width, int height);
     static void WindowMinimizeCallback(GLFWwindow *pWindow, int minimized);
+private:
+    static constexpr size_t kNumBackBuffer = 2;
 private:
     bool _pause = false;
     bool _needResize = true;
@@ -38,9 +41,10 @@ private:
     uint32_t _height = 0;
 private:
     vkgfx::CommandBufferRing _graphicsCmdRing;
+    vkgfx::DynamicBufferRing _dynamicBufferRing;
+    vkgfx::UploadHeap _uploadHeap;
 private:
     vk::Pipeline _graphicsPipeline;
-    vkgfx::UploadHeap _uploadHeap;
     vk::PipelineLayout _pipelineLayout;
     vkgfx::StaticBufferPool _vertexBuffer;
     vk::DescriptorBufferInfo _triangleBufferInfo = {};

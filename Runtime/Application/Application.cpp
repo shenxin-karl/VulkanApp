@@ -32,14 +32,26 @@ void Application::Startup() {
     SetupVulkan();
 
     gShaderManager->Initialize();
-    //gImGUI->OnCreate(vkgfx::gDevice, vkgfx::gSwapChain->GetRenderPass(), _uploadHeap, )
+
+    constexpr size_t k128MB = 128 * 1024 * 1024;
+    _uploadHeap.OnCreate("GlobalUploadHeap", vkgfx::gDevice, k128MB);
+
+    vkgfx::DynamicBufferRing::BufferType dynamicBufferType = vkgfx::DynamicBufferRing::Constant |
+                                                             vkgfx::DynamicBufferRing::Index |
+                                                             vkgfx::DynamicBufferRing::Vertex;
+
+    constexpr size_t k32MB = 32 * 1024 * 1024;
+    _dynamicBufferRing.OnCreate("DynamicBuffer", vkgfx::gDevice, dynamicBufferType, kNumBackBuffer, k32MB);
+
+    gImGUI->OnCreate(vkgfx::gDevice, vkgfx::gSwapChain->GetRenderPass(), _uploadHeap, &_dynamicBufferRing, 12.f);
     Loading();
 }
 
 void Application::Cleanup() {
+    gImGUI->OnDestroy();
     gShaderManager->Destroy();
-    DestroyVulkan();
-    DestroyGlfw();
+    CleanUpVulkan();
+    CleanUpGlfw();
     vkgfx::gDxcModule->OnDestroy();
     gAssetProjectSetting->Destroy();
     gLogger->Destroy();
@@ -56,20 +68,28 @@ bool Application::IsPause() const {
 void Application::PollEvents() {
     glfwPollEvents();
     if (_pause) {
-	    return;
+        return;
     }
     if (_needResize) {
         _needResize = false;
         OnResize();
+        gImGUI->SetWindowSize(_width, _height);
+        gImGUI->UpdateRenderPass(vkgfx::gSwapChain->GetRenderPass());
     }
 }
 
 void Application::Update(std::shared_ptr<GameTimer> pGameTimer) {
- 
+    gImGUI->NewFrame();
+
+    ImGui::Text("111");
+
+    gImGUI->EndFrame();
 }
 
 void Application::RenderScene(std::shared_ptr<GameTimer> pGameTimer) {
     _graphicsCmdRing.OnBeginFrame();
+    _dynamicBufferRing.OnBeginFrame();
+
     vk::CommandBuffer cmd = _graphicsCmdRing.GetNewCommandBuffer();
     vk::CommandBufferBeginInfo beginInfo;
     cmd.begin(beginInfo);
@@ -79,20 +99,21 @@ void Application::RenderScene(std::shared_ptr<GameTimer> pGameTimer) {
     cmd.setViewport(0, vkgfx::gSwapChain->GetFullScreenViewport());
     cmd.setScissor(0, vkgfx::gSwapChain->GetFullScreenScissor());
 
-	if (vkgfx::PrefMarkerGuard profile(cmd, "OpaquePass"); profile.Sample()) {
-        vk::ClearValue clearColor = {};
-	    clearColor.color.float32 = std::array{0.f, 0.f, 0.f, 1.f};
+    vk::ClearValue clearColor = {};
+    clearColor.color.float32 = std::array{0.f, 0.f, 0.f, 1.f};
+    vk::RenderPassBeginInfo renderPassBeginInfo = vkgfx::gSwapChain->GetRenderPassBeginInfo();
+    renderPassBeginInfo.clearValueCount = 1;
+    renderPassBeginInfo.pClearValues = &clearColor;
+    cmd.beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
+    if (vkgfx::PrefMarkerGuard profile(cmd, "OpaquePass"); profile.Sample()) {
 
-	    vk::RenderPassBeginInfo renderPassBeginInfo = vkgfx::gSwapChain->GetRenderPassBeginInfo();
-	    renderPassBeginInfo.clearValueCount = 1;
-	    renderPassBeginInfo.pClearValues = &clearColor;
-        cmd.beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
         cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
         cmd.bindVertexBuffers(0, _triangleBufferInfo.buffer, _triangleBufferInfo.offset);
         cmd.draw(3, 1, 0, 0);
-        cmd.endRenderPass();
     }
+    gImGUI->Draw(cmd);
 
+    cmd.endRenderPass();
     cmd.end();
 
     vk::PipelineStageFlags waitDstMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -115,16 +136,16 @@ void Application::OnResize() {
 
     vk::Device device = vkgfx::gDevice->GetVKDevice();
     if (_graphicsPipeline) {
-	    device.destroyPipeline(_graphicsPipeline);
+        device.destroyPipeline(_graphicsPipeline);
         _graphicsPipeline = VK_NULL_HANDLE;
     }
     if (_pipelineLayout) {
-	    device.destroyPipelineLayout(_pipelineLayout);
+        device.destroyPipelineLayout(_pipelineLayout);
         _pipelineLayout = VK_NULL_HANDLE;
     }
 
     vk::PipelineShaderStageCreateInfo shaderStages[2];
-    ShaderLoadInfo loadInfo = {"Assets/Shaders/Triangles.hlsl", "VSMain", vkgfx::ShaderType::kVS };
+    ShaderLoadInfo loadInfo = {"Assets/Shaders/Triangles.hlsl", "VSMain", vkgfx::ShaderType::kVS};
     gShaderManager->LoadShaderStageCreateInfo(loadInfo, shaderStages[0]);
 
     loadInfo.entryPoint = "PSMain";
@@ -213,7 +234,7 @@ void Application::SetupGlfw() {
     glfwSetWindowIconifyCallback(_pWindow, WindowMinimizeCallback);
 }
 
-void Application::DestroyGlfw() {
+void Application::CleanUpGlfw() {
     glfwDestroyWindow(_pWindow);
     _pWindow = nullptr;
     glfwTerminate();
@@ -224,7 +245,6 @@ void Application::SetupVulkan() {
         Exception::Throw("GLFW Vulkan Not Supported");
     }
 
-    constexpr size_t kNumBackBuffer = 2;
     constexpr size_t kNumCommandBufferPreFrame = 3;
     vkgfx::gDevice->OnCreate("VulkanAPP", "Vulkan", true, _pWindow);
     vkgfx::gSwapChain->OnCreate(vkgfx::gDevice, kNumBackBuffer);
@@ -232,7 +252,7 @@ void Application::SetupVulkan() {
     vkgfx::gDevice->CreatePipelineCache();
 }
 
-void Application::DestroyVulkan() {
+void Application::CleanUpVulkan() {
     vkgfx::gDevice->WaitGPUFlush();
     vkgfx::gDevice->DestroyPipelineCache();
     _graphicsCmdRing.OnDestroy();
@@ -261,14 +281,13 @@ void Application::WindowMinimizeCallback(GLFWwindow *pWindow, int minimized) {
 }
 
 void Application::Loading() {
+    // clang-format off
     const std::vector<Vertex> vertices = {
     	{{+0.0f, -0.5f, +0.f}, {1.0f, 0.0f, 0.0f}},
         {{+0.5f, +0.5f, +0.f}, {0.0f, 1.0f, 0.0f}},
         {{-0.5f, +0.5f, +0.f}, {0.0f, 0.0f, 1.0f}}
     };
-
-    constexpr size_t k128MB = 128 * 1024 * 1024;
-    _uploadHeap.OnCreate("GlobalUploadHeap", vkgfx::gDevice, k128MB);
+    // clang-format on
 
     size_t memoryAllocSize = sizeof(Vertex) * vertices.size();
     _vertexBuffer.OnCreate("TriangleBuffer", vkgfx::gDevice, memoryAllocSize);

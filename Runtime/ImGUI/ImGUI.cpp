@@ -11,6 +11,16 @@
 #include "VulkanRenderer/ExtDebugUtils.h"
 #include "VulkanRenderer/VKException.h"
 
+static float GetScaleFactorForDevice() {
+    HDC hdc = GetDC(NULL);
+    int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
+    int dpiY = GetDeviceCaps(hdc, LOGPIXELSY);
+    ReleaseDC(NULL, hdc);
+    float scaleFactorX = dpiX / 96.0f; // 96 dpi is the standard
+    float scaleFactorY = dpiY / 96.0f;
+    return (scaleFactorX + scaleFactorY) / 2.0f;
+}
+
 void ImGUI::OnCreate(vkgfx::Device *pDevice,
     vk::RenderPass renderPass,
     vkgfx::UploadHeap &uploadHeap,
@@ -20,12 +30,11 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
     _pDynamicBuffer = pConstantBuffer;
     SetDevice(pDevice);
 
+    ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
-    //DEVICE_SCALE_FACTOR scaleFactor = GetScaleFactorForDevice(DEVICE_PRIMARY);
-    //float textScale = scaleFactor / 100.f;
-    float textScale = 1.0;
+    float scaleFactor = GetScaleFactorForDevice();
     ImFontConfig fontConfig;
-    fontConfig.SizePixels = fontSize * textScale;
+    fontConfig.SizePixels = fontSize * scaleFactor;
     io.Fonts->AddFontDefault(&fontConfig);
 
     unsigned char *pixels;
@@ -61,6 +70,7 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
         imageViewCreateInfo.components = vkgfx::GetComponentMapping_RGBA();
         imageViewCreateInfo.subresourceRange.layerCount = 1;
         imageViewCreateInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+        imageViewCreateInfo.subresourceRange.levelCount = 1;
         _textureSRV = device.createImageView(imageViewCreateInfo);
     }
 
@@ -90,13 +100,16 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
     job.prevBarrier.image = _texture.GetImage();
     job.prevBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
     job.prevBarrier.subresourceRange.layerCount = 1;
+    job.prevBarrier.subresourceRange.levelCount = 1;
 
     job.bufferImageCopy.bufferOffset = *pOffset;
+    job.bufferImageCopy.bufferRowLength = 0;
     job.bufferImageCopy.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
     job.bufferImageCopy.imageSubresource.layerCount = 1;
-    job.bufferImageCopy.imageExtent.width = width;
-    job.bufferImageCopy.imageExtent.height = height;
-    job.bufferImageCopy.imageExtent.depth = 1;
+    job.bufferImageCopy.imageSubresource.mipLevel = 0;
+    job.bufferImageCopy.imageSubresource.baseArrayLayer = 0;
+    job.bufferImageCopy.imageOffset = {0, 0, 0};
+    job.bufferImageCopy.imageExtent = {static_cast<uint32>(width), static_cast<uint32>(height), 1};
 
     job.postBarrier = job.prevBarrier;
     job.postBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
@@ -125,7 +138,7 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
         layoutBinding[2].stageFlags = vk::ShaderStageFlagBits::eFragment;
 
         vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
-        descriptorSetLayoutCreateInfo.bindingCount = 2;
+        descriptorSetLayoutCreateInfo.bindingCount = 3;
         descriptorSetLayoutCreateInfo.pBindings = layoutBinding;
 
         _descriptorSetLayout = device.createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
@@ -177,6 +190,7 @@ void ImGUI::OnCreate(vkgfx::Device *pDevice,
             writes[0].dstArrayElement = 0;
             writes[0].dstBinding = 1;
 
+            writes[1].dstSet = _descriptorSet[i];
             writes[1].descriptorCount = 1;
             writes[1].descriptorType = vk::DescriptorType::eSampler;
             writes[1].pImageInfo = descriptorImage;
@@ -210,6 +224,8 @@ void ImGUI::OnDestroy() {
     _pipelineLayout = VK_NULL_HANDLE;
     _descriptorPool = VK_NULL_HANDLE;
     _pipeline = VK_NULL_HANDLE;
+
+    ImGui::DestroyContext();
 }
 
 void ImGUI::SetWindowSize(size_t width, size_t height) {
@@ -294,10 +310,9 @@ void ImGUI::UpdateRenderPass(vk::RenderPass renderPass) {
 }
 
 void ImGUI::NewFrame() {
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO &io = ImGui::GetIO();
 
     // Setup display size (every frame to accommodate for window resizing)
-    RECT rect;
     io.DisplaySize.x = static_cast<float>(_width);
     io.DisplaySize.y = static_cast<float>(_height);
 
@@ -317,7 +332,7 @@ void ImGUI::NewFrame() {
 }
 
 void ImGUI::EndFrame() {
-	ImGui::EndFrame();
+    ImGui::EndFrame();
 }
 
 void ImGUI::Draw(vk::CommandBuffer cmd) {
@@ -328,6 +343,10 @@ void ImGUI::Draw(vk::CommandBuffer cmd) {
     }
 
     ImDrawData *pDrawData = ImGui::GetDrawData();
+    if (pDrawData->CmdListsCount == 0) {
+	    return;
+    }
+
     ImDrawVert *pVertexBuffer = nullptr;
     ImDrawIdx *pIndicesBuffer = nullptr;
     size_t totalVertexSize = pDrawData->TotalVtxCount * sizeof(ImDrawVert);
