@@ -1,6 +1,5 @@
 #pragma once
 #include <Windows.h>
-#include <imgui.h>
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 #include "IApplication.h"

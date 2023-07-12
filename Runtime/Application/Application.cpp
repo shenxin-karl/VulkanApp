@@ -7,10 +7,10 @@
 #include "Utils/AssetProjectSetting.h"
 #include "Shader/ShaderManager.h"
 #include "VulkanRenderer/DefineList.h"
-#include <imgui.h>
 #include <glm/glm.hpp>
 
-#include "ImGUI/ImGUI.h"
+#include "ImGUI/GUI.h"
+#include "ImGUI/libary/imgui.h"
 #include "VulkanRenderer/ExtDebugUtils.h"
 #include "VulkanRenderer/Utils.hpp"
 
@@ -43,12 +43,12 @@ void Application::Startup() {
     constexpr size_t k32MB = 32 * 1024 * 1024;
     _dynamicBufferRing.OnCreate("DynamicBuffer", vkgfx::gDevice, dynamicBufferType, kNumBackBuffer, k32MB);
 
-    gImGUI->OnCreate(vkgfx::gDevice, vkgfx::gSwapChain->GetRenderPass(), _uploadHeap, &_dynamicBufferRing, 12.f);
+    gGui->OnCreate(vkgfx::gDevice, _pWindow, vkgfx::gSwapChain->GetRenderPass());
     Loading();
 }
 
 void Application::Cleanup() {
-    gImGUI->OnDestroy();
+    gGui->OnDestroy();
     gShaderManager->Destroy();
     CleanUpVulkan();
     CleanUpGlfw();
@@ -73,17 +73,17 @@ void Application::PollEvents() {
     if (_needResize) {
         _needResize = false;
         OnResize();
-        gImGUI->SetWindowSize(_width, _height);
-        gImGUI->UpdateRenderPass(vkgfx::gSwapChain->GetRenderPass());
     }
 }
 
 void Application::Update(std::shared_ptr<GameTimer> pGameTimer) {
-    gImGUI->NewFrame();
-
-    ImGui::Text("111");
-
-    gImGUI->EndFrame();
+    gGui->NewFrame();
+    // 创建一个dock空间
+    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+    ImGui::Begin("Dockable Window", NULL);
+		ImGui::Text("111");
+	// 窗口内容
+	ImGui::End();
 }
 
 void Application::RenderScene(std::shared_ptr<GameTimer> pGameTimer) {
@@ -111,7 +111,7 @@ void Application::RenderScene(std::shared_ptr<GameTimer> pGameTimer) {
         cmd.bindVertexBuffers(0, _triangleBufferInfo.buffer, _triangleBufferInfo.offset);
         cmd.draw(3, 1, 0, 0);
     }
-    gImGUI->Draw(cmd);
+    gGui->Draw(cmd);
 
     cmd.endRenderPass();
     cmd.end();

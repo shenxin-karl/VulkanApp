@@ -26,6 +26,7 @@ public:
     auto GetRenderPassBeginInfo() const -> vk::RenderPassBeginInfo;
     auto GetFullScreenViewport() const -> vk::Viewport;
     auto GetFullScreenScissor() const -> vk::Rect2D;
+    auto GetBackBufferCount() const -> uint32_t;
 private:
     void CreateRTV();
     void DestroyRTV();

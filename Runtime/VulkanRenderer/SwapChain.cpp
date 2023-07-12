@@ -124,6 +124,10 @@ auto SwapChain::GetFullScreenScissor() const -> vk::Rect2D {
     return scissorRect;
 }
 
+auto SwapChain::GetBackBufferCount() const -> uint32_t {
+    return _backBufferCount;
+}
+
 void SwapChain::CreateRTV() {
     auto device = GetDevice()->GetVKDevice();
     _imageViews.resize(_images.size());
