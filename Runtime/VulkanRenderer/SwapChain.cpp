@@ -192,7 +192,10 @@ void SwapChain::CreateRenderPass() {
     renderPassCreateInfo.pSubpasses = &subpass;
     renderPassCreateInfo.dependencyCount = 1;
     renderPassCreateInfo.pDependencies = &dep;
-    _renderPass = GetDevice()->GetVKDevice().createRenderPass(renderPassCreateInfo);
+
+    vk::Device device = GetDevice()->GetVKDevice();
+    _renderPass = device.createRenderPass(renderPassCreateInfo);
+    SetResourceName(device, _renderPass, "SwapChain RenderPass");
 }
 
 void SwapChain::DestroyRenderPass() {

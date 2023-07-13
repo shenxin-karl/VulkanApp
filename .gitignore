@@ -373,3 +373,4 @@ FodyWeavers.xsd
 
 Engine/EffectLab/Tool/.antlr/
 Res/.temp/
+/Bin/imgui.ini
