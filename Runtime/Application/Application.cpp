@@ -51,6 +51,7 @@ void Application::Startup() {
 }
 
 void Application::Cleanup() {
+    vkgfx::gDevice->WaitGPUFlush();
     gEditorWindow->OnDestroy();
     gGui->OnDestroy();
     gShaderManager->Destroy();
@@ -258,6 +259,16 @@ void Application::CleanUpVulkan() {
     _graphicsCmdRing.OnDestroy();
     _vertexBuffer.OnDestroy();
     _uploadHeap.OnDestroy();
+    if (_pipelineLayout) {
+	    vkgfx::gDevice->GetVKDevice().destroyPipelineLayout(_pipelineLayout);
+        _pipelineLayout = VK_NULL_HANDLE;
+    }
+    if (_graphicsPipeline) {
+	    vkgfx::gDevice->GetVKDevice().destroyPipeline(_graphicsPipeline);
+	    _graphicsPipeline = VK_NULL_HANDLE;
+    }
+
+    _dynamicBufferRing.OnDestroy();
     vkgfx::gSwapChain->OnDestroy();
     vkgfx::gDevice->OnDestroy();
 }

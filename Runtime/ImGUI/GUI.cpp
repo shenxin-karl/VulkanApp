@@ -33,7 +33,7 @@ void GUI::OnCreate(vkgfx::Device *pDevice, GLFWwindow *pWindow, vk::RenderPass r
 	poolCreateInfo.poolSizeCount = static_cast<uint32_t>(std::size(poolSizes));
 	poolCreateInfo.pPoolSizes = poolSizes;
 	_descriptorPool = device.createDescriptorPool(poolCreateInfo);
-
+	vkgfx::SetResourceName(device, _descriptorPool, "ImGui Descriptor Pool");
 
 	 // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -120,6 +120,7 @@ void GUI::OnDestroy() {
     vk::Device device = GetDevice()->GetVKDevice();
     device.destroyDescriptorPool(_descriptorPool);
     _descriptorPool = VK_NULL_HANDLE;
+    SetIsCreate(false);
 }
 
 void GUI::NewFrame() {

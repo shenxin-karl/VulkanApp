@@ -63,6 +63,7 @@ auto StaticBufferPool::OnCreate(std::string_view name, Device *pDevice, std::siz
 void StaticBufferPool::OnDestroy() {
     ExceptionAssert(GetIsCreate());
     VmaAllocator allocator = GetDevice()->GetAllocator();
+
     if (_staticBuffer) {
         vmaDestroyBuffer(allocator, _staticBuffer, _staticBufferAlloc);
         _staticBuffer = nullptr;
@@ -72,6 +73,7 @@ void StaticBufferPool::OnDestroy() {
     FreeUploadHeap();
     _memoryOffset = 0;
     _totalMemorySize = 0;
+    SetIsCreate(false);
 }
 
 auto StaticBufferPool::AllocBuffer(size_t numElement, size_t stride, void **pData)
