@@ -4,6 +4,7 @@
 
 #include "Libary/imgui_impl_vulkan.h"
 #include "VulkanRenderer/Device.h"
+#include "VulkanRenderer/ExtDebugUtils.h"
 #include "VulkanRenderer/SwapChain.h"
 
 static constexpr uint32_t kMinImageCount = 2;
@@ -132,6 +133,8 @@ void GUI::NewFrame() {
 void GUI::Draw(vk::CommandBuffer cmd) {
     ImGui::Render();
     ImDrawData *pDrawData = ImGui::GetDrawData();
+     
+    vkgfx::PrefMarkerGuard guard(cmd, "ImGUI Draw Pass", Colors::Orange);
     ImGui_ImplVulkan_RenderDrawData(pDrawData, cmd);
 
     // Update and Render additional Platform Windows

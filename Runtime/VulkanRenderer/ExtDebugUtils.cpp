@@ -33,12 +33,11 @@ void ExtDebugUtils::SetResourceName(vk::Device device,
     }
 }
 
-void ExtDebugUtils::SetPrefMarkerBegin(vk::CommandBuffer cmd, std::string_view name) {
+void ExtDebugUtils::SetPrefMarkerBegin(vk::CommandBuffer cmd, std::string_view name, const glm::vec4 &color) {
     if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBeginDebugUtilsLabelEXT && !name.empty()) {
-        std::array<float, 4> color = {1.0f, 0.0f, 0.0f, 1.0f};
         vk::DebugUtilsLabelEXT label = {
             .pLabelName = name.data(),
-            .color = color,
+            .color = std::array{color[0], color[1], color[2], color[3]},
         };
         cmd.beginDebugUtilsLabelEXT(label);
     }

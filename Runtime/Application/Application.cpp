@@ -76,6 +76,7 @@ void Application::PollEvents() {
     }
     if (_needResize) {
         _needResize = false;
+        vkgfx::gDevice->WaitGPUFlush();
         OnResize();
     }
 }
