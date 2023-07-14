@@ -12,6 +12,9 @@ public:
 	void OnCreate();
 	void OnDestroy();
 	void OnGUI(GameTimer &gameTimer);
+	auto GetMainBar() const -> MainBar * {
+		return _pMainBar.get();
+	}
 private:
 	std::unique_ptr<MainBar> _pMainBar;
 };

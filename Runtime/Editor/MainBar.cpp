@@ -13,6 +13,9 @@ void MainBar::OnGUI(GameTimer &gameTimer) {
 		}
 		ImGui::EndMenu();
 	}
-
+    if (ImGui::BeginMenu("Tools")) {
+		startRenderDocCapture = ImGui::Button("Capture Frame");
+		ImGui::EndMenu();
+    }
     ImGui::EndMainMenuBar();
 }

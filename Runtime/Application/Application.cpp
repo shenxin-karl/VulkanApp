@@ -8,12 +8,17 @@
 #include "Shader/ShaderManager.h"
 #include "VulkanRenderer/DefineList.h"
 #include <glm/glm.hpp>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 
 #include "Editor/EditorWindow.h"
+#include "Editor/MainBar.h"
 #include "ImGUI/GUI.h"
 #include "ImGUI/Libary/imgui.h"
+#include "RenderDoc/RenderDoc.h"
 #include "VulkanRenderer/ExtDebugUtils.h"
 #include "VulkanRenderer/Utils.hpp"
+
 
 struct Vertex {
     glm::vec3 position;
@@ -25,6 +30,8 @@ Application::Application() {
 
 void Application::Startup() {
     gLogger->Initialize();
+    RenderDoc::Load();
+
     gLogger->StartLogging();
     gAssetProjectSetting->Initialize();
     vkgfx::gDxcModule->OnCreate();
@@ -59,6 +66,7 @@ void Application::Cleanup() {
     CleanUpGlfw();
     vkgfx::gDxcModule->OnDestroy();
     gAssetProjectSetting->Destroy();
+    RenderDoc::Free();
     gLogger->Destroy();
 }
 
@@ -89,6 +97,11 @@ void Application::Update(std::shared_ptr<GameTimer> pGameTimer) {
 }
 
 void Application::RenderScene(std::shared_ptr<GameTimer> pGameTimer) {
+    if (gEditorWindow->GetMainBar()->startRenderDocCapture) {
+        HWND hwnd = glfwGetWin32Window(_pWindow);
+	    RenderDoc::BeginFrameCapture(hwnd);
+    }
+
     _graphicsCmdRing.OnBeginFrame();
     _dynamicBufferRing.OnBeginFrame();
 
@@ -128,6 +141,13 @@ void Application::RenderScene(std::shared_ptr<GameTimer> pGameTimer) {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &_graphicsCmdRing.GetRenderFinishedSemaphore();
     vkgfx::gDevice->GetGraphicsQueue().submit(submitInfo, _graphicsCmdRing.GetExecutedFinishedFence());
+
+    if (gEditorWindow->GetMainBar()->startRenderDocCapture) {
+        HWND hwnd = glfwGetWin32Window(_pWindow);
+	    RenderDoc::EndFrameCapture(hwnd);
+        gEditorWindow->GetMainBar()->startRenderDocCapture = false;
+    }
+
     vkgfx::gSwapChain->Present(_graphicsCmdRing.GetRenderFinishedSemaphore());
 }
 

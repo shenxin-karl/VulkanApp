@@ -1,11 +1,12 @@
 #include "GUI.h"
+#include "Foundation/Logger.h"
 #include "Libary/imgui.h"
 #include "Libary/imgui_impl_glfw.h"
-
 #include "Libary/imgui_impl_vulkan.h"
 #include "VulkanRenderer/Device.h"
 #include "VulkanRenderer/ExtDebugUtils.h"
 #include "VulkanRenderer/SwapChain.h"
+#include "VulkanRenderer/VKException.h"
 
 static constexpr uint32_t kMinImageCount = 2;
 
@@ -147,7 +148,5 @@ void GUI::Draw(vk::CommandBuffer cmd) {
 }
 
 void GUI::CheckImGuiVkResult(VkResult err) {
-    if (err == 0)
-        return;
-    //fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
+    VKException::Throw(err);
 }
