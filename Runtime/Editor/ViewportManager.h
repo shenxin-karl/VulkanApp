@@ -9,6 +9,7 @@
 class ViewportManager {
 public:
     void OnCreate();
+    void OnDestroy();
 
     void OnGUI(GameTimer &gameTimer);
 

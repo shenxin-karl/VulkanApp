@@ -4,7 +4,7 @@
 
 class IViewport : public NonCopyable {
 public:
-    explicit IViewport(std::string &&viewportName) : _viewportName(std::move(viewportName)) {
+    explicit IViewport(std::string viewportName) : _viewportName(std::move(viewportName)) {
     }
     virtual ~IViewport() {
     }

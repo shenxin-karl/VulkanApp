@@ -66,16 +66,18 @@ void RenderDoc::BeginFrameCapture(void *pNativeWindowHandle) {
     if (sRenderDocApi == nullptr) {
 	    return;
     }
-    vk::Instance instance = vkgfx::gDevice->GetInstance();
-    sRenderDocApi->StartFrameCapture(instance, pNativeWindowHandle);
+    VkInstance instance = vkgfx::gDevice->GetInstance();
+    void *devicePointer = RENDERDOC_DEVICEPOINTER_FROM_VKINSTANCE(instance);
+    sRenderDocApi->StartFrameCapture(devicePointer, pNativeWindowHandle);
 }
 
 void RenderDoc::EndFrameCapture(void *pNativeWindowHandle) {
     if (sRenderDocApi == nullptr) {
 	    return;
     }
-    vk::Instance instance = vkgfx::gDevice->GetInstance();
-    sRenderDocApi->EndFrameCapture(instance, pNativeWindowHandle);
+    VkInstance instance = vkgfx::gDevice->GetInstance();
+    void *devicePointer = RENDERDOC_DEVICEPOINTER_FROM_VKINSTANCE(instance);
+    sRenderDocApi->EndFrameCapture(devicePointer, pNativeWindowHandle);
     if (!sRenderDocApi->IsRemoteAccessConnected()) {
 	    sRenderDocApi->LaunchReplayUI(true, "");
     }

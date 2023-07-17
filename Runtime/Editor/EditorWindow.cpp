@@ -11,6 +11,7 @@ void EditorWindow::OnCreate() {
 }
 
 void EditorWindow::OnDestroy() {
+    gViewportManager->OnDestroy();
 }
 
 void EditorWindow::OnGUI(GameTimer &gameTimer) {
